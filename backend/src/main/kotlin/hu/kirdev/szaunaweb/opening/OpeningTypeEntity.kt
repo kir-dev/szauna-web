@@ -1,46 +1,41 @@
 package hu.kirdev.szaunaweb.opening
 
-import jakarta.persistence.CascadeType
+import hu.kirdev.szaunaweb.persistence.AuditedEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
+import jakarta.validation.constraints.Min
+import jakarta.validation.constraints.NotBlank
 
 @Entity
-@Table(name = "opening_types")
-data class OpeningTypeEntity(
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    var id: Long = 0,
-
+@Table(
+    name = "opening_types",
+    uniqueConstraints = [
+        UniqueConstraint(name = "uq_opening_type_name", columnNames = ["name"]),
+    ]
+)
+class OpeningTypeEntity(
+    @field:NotBlank
     @Column(name = "name", nullable = false)
     var name: String,
 
     @Column(name = "description")
-    var description: String?,
+    var description: String? = null,
 
-    @OneToMany(mappedBy = "openingType", cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
+    @field:Min(0)
+    @Column(name = "default_price", nullable = false)
+    var defaultPrice: Int,
+
+    @Column(name = "active", nullable = false)
+    var active: Boolean = true,
+
+    @OneToMany(mappedBy = "openingType", fetch = FetchType.LAZY)
     var openings: MutableList<OpeningEntity> = mutableListOf(),
+) : AuditedEntity() {
 
-    ) {
-
-    override fun hashCode(): Int {
-        return javaClass.hashCode()
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other !is OpeningTypeEntity) return false
-        if (id != other.id) return false
-        return true
-    }
-
-    override fun toString(): String {
-        return this::class.simpleName + "(id = $id, name = $name, description = $description)"
-    }
-
+    override fun toString(): String =
+        "OpeningTypeEntity(id=$id, name=$name, defaultPrice=$defaultPrice, active=$active)"
 }
