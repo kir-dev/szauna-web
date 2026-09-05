@@ -1,5 +1,7 @@
 package hu.kirdev.szaunaweb.inventory
 
 enum class InventoryHistoryType {
-    USED, BOUGHT
+    USED,
+    BOUGHT,
+    ADJUSTMENT
 }

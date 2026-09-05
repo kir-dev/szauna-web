@@ -1,21 +1,17 @@
 package hu.kirdev.szaunaweb.opening
 
+import hu.kirdev.szaunaweb.persistence.AuditedEntity
 import jakarta.persistence.CascadeType
+import jakarta.persistence.CheckConstraint
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
-import jakarta.persistence.JoinColumns
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.UuidGenerator
-import org.springframework.data.annotation.LastModifiedDate
-import java.time.Instant
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -23,14 +19,14 @@ import java.util.UUID
 @Table(
     name = "opening_intervals",
     uniqueConstraints = [
-        UniqueConstraint(name = "uq_opening_intervals_public_id", columnNames = ["public_id"])
+        UniqueConstraint(name = "uq_opening_intervals_public_id", columnNames = ["public_id"]),
+        UniqueConstraint(name = "uq_opening_intervals_slot", columnNames = ["opening_id", "interval_start"])
+    ],
+    check = [
+        CheckConstraint(name = "ck_opening_intervals_range", constraint = "interval_end > interval_start")
     ]
 )
-data class OpeningIntervalEntity(
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    var id: Long = 0,
-
+class OpeningIntervalEntity(
     @UuidGenerator(style = UuidGenerator.Style.VERSION_7)
     @Column(name = "public_id", nullable = false, updatable = false, unique = true)
     var publicId: UUID? = null,
@@ -42,31 +38,22 @@ data class OpeningIntervalEntity(
     var intervalEnd: LocalDateTime,
 
     @Column(name = "participant_limit", nullable = false)
-    var participantLimit: Int = 0,
+    var participantLimit: Int = DEFAULT_PARTICIPANT_LIMIT,
 
-    @OneToMany(mappedBy = "openingInterval", cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
-    var participants: MutableList<OpeningParticipantEntity> = mutableListOf(),
-
-    @LastModifiedDate
-    @Column(name = "updated_at", nullable = false)
-    var updatedAt: Instant = Instant.now(),
+    @OneToMany(mappedBy = "openingInterval", cascade = [CascadeType.PERSIST, CascadeType.MERGE], fetch = FetchType.LAZY, orphanRemoval = true)
+    var bookings: MutableList<OpeningBookingEntity> = mutableListOf(),
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "opening_id", nullable = false)
     var opening: OpeningEntity
-) {
-    override fun hashCode(): Int {
-        return javaClass.hashCode()
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other !is OpeningIntervalEntity) return false
-        if (id != other.id) return false
-        return true
-    }
+) : AuditedEntity() {
 
     override fun toString(): String {
         return this::class.simpleName + "(id = $id, publicId = $publicId, intervalStart = $intervalStart, intervalEnd = $intervalEnd, participantLimit = $participantLimit)"
     }
+
+    companion object {
+        const val DEFAULT_PARTICIPANT_LIMIT = 8
+    }
+
 }
