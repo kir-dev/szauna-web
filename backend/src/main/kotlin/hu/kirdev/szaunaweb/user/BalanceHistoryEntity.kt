@@ -1,7 +1,6 @@
 package hu.kirdev.szaunaweb.user
 
 import hu.kirdev.szaunaweb.opening.OpeningBookingEntity
-import hu.kirdev.szaunaweb.persistence.AuditedEntity
 import hu.kirdev.szaunaweb.persistence.BaseEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -9,9 +8,6 @@ import jakarta.persistence.EntityListeners
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne

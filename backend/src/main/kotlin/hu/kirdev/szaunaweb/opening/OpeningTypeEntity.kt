@@ -5,12 +5,10 @@ import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import jakarta.validation.constraints.NotBlank
 
 @Entity
 @Table(
@@ -20,6 +18,7 @@ import jakarta.persistence.UniqueConstraint
     ]
 )
 class OpeningTypeEntity(
+    @field:NotBlank
     @Column(name = "name", nullable = false)
     var name: String,
 

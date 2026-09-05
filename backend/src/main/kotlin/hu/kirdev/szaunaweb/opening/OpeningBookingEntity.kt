@@ -7,17 +7,13 @@ import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import jakarta.validation.constraints.Min
 import org.hibernate.annotations.UuidGenerator
-import org.springframework.data.annotation.CreatedDate
-import org.springframework.data.annotation.LastModifiedDate
 import java.time.Instant
 import java.util.UUID
 
@@ -47,6 +43,7 @@ class OpeningBookingEntity(
     @JoinColumn(name = "created_by_id", nullable = false)
     var createdBy: UserEntity,
 
+    @field:Min(1)
     @Column(name = "seat_count", nullable = false)
     var seatCount: Int = 1,
 

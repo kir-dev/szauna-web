@@ -8,12 +8,10 @@ import jakarta.persistence.EntityListeners
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
+import jakarta.validation.constraints.Min
 import org.springframework.data.annotation.CreatedDate
 import org.springframework.data.jpa.domain.support.AuditingEntityListener
 import java.time.Instant
@@ -29,6 +27,7 @@ class InventoryHistoryEntity(
     @Column(name = "message")
     var message: String? = null,
 
+    @field:Min(0)
     @Column(name = "quantity", nullable = false)
     var quantity: Int = 0,
 

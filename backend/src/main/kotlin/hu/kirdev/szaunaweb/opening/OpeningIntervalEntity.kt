@@ -11,6 +11,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import jakarta.validation.constraints.Min
 import org.hibernate.annotations.UuidGenerator
 import java.time.LocalDateTime
 import java.util.UUID
@@ -37,10 +38,16 @@ class OpeningIntervalEntity(
     @Column(name = "interval_end", nullable = false)
     var intervalEnd: LocalDateTime,
 
+    @field:Min(1)
     @Column(name = "participant_limit", nullable = false)
     var participantLimit: Int = DEFAULT_PARTICIPANT_LIMIT,
 
-    @OneToMany(mappedBy = "openingInterval", cascade = [CascadeType.PERSIST, CascadeType.MERGE], fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(
+        mappedBy = "openingInterval",
+        cascade = [CascadeType.PERSIST, CascadeType.MERGE],
+        fetch = FetchType.LAZY,
+        orphanRemoval = true
+    )
     var bookings: MutableList<OpeningBookingEntity> = mutableListOf(),
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

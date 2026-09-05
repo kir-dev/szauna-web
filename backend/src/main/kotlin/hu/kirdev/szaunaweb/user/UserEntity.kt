@@ -3,6 +3,7 @@ package hu.kirdev.szaunaweb.user
 import hu.kirdev.szaunaweb.opening.OpeningBookingEntity
 import hu.kirdev.szaunaweb.persistence.AuditedEntity
 import jakarta.persistence.CascadeType
+import jakarta.persistence.Transient
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -13,6 +14,8 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import jakarta.validation.constraints.AssertTrue
+import jakarta.validation.constraints.NotBlank
 import org.hibernate.annotations.UuidGenerator
 import java.time.Instant
 import java.util.UUID
@@ -34,9 +37,11 @@ class UserEntity(
     @Column(name = "auth_sub", nullable = false, unique = true, updatable = false)
     var authSub: String,
 
+    @field:NotBlank
     @Column(name = "email", nullable = false, unique = true)
     var email: String,
 
+    @field:NotBlank
     @Column(name = "display_name", nullable = false)
     var displayName: String,
 
@@ -67,8 +72,15 @@ class UserEntity(
     var bannedAt: Instant? = null,
 
     @OneToMany(mappedBy = "orderedBy", cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
-    var bookings: MutableList<OpeningBookingEntity> = mutableListOf(),
+    var bookings: MutableList<OpeningBookingEntity> = mutableListOf()
 
-    ): AuditedEntity(){
+) : AuditedEntity() {
+
+    @get:AssertTrue(message = "ban reason is required when the user is banned")
+    @get:Transient
+    val isBanReasonValid: Boolean
+        get() = !isBanned || !banReason.isNullOrBlank()
+
+
     override fun toString(): String = "UserEntity(id=$id, publicId=$publicId, authSub=$authSub, role=$role)"
 }
