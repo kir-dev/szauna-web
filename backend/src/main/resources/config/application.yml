@@ -20,7 +20,7 @@ spring:
           authsch:
             authorization-uri: https://auth.sch.bme.hu/site/login
             token-uri: https://auth.sch.bme.hu/oauth2/token
-            user-info-uri: https://auth.sch.bme.hu/oidc/userinfo
+            user-info-uri: https://auth.sch.bme.hu/api/profile
             user-name-attribute: internal_id
 
 szaunaWeb:
