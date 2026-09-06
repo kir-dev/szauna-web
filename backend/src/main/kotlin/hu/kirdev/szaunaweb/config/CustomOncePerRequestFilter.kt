@@ -19,6 +19,7 @@ class CustomOncePerRequestFilter(
     private val cookieName: String,
     private val jwtService: JwtService
 ) : OncePerRequestFilter() {
+
     override fun doFilterInternal(
         request: HttpServletRequest,
         response: HttpServletResponse,
@@ -43,6 +44,5 @@ class CustomOncePerRequestFilter(
         filterChain.doFilter(request, response)
 
     }
-
 
 }

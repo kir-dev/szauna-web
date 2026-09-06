@@ -19,7 +19,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @EnableMethodSecurity
 class SecurityConfig(
     private val authSchSuccessHandler: AuthSchSuccessHandler,
-    private val customOncePerRequestFilter: CustomOncePerRequestFilter
+    private val customOncePerRequestFilter: CustomOncePerRequestFilter,
 ) {
 
     @Bean
@@ -52,6 +52,8 @@ class SecurityConfig(
                         "/login/**",
                         "/oauth2/**",
                     ).permitAll()
+                    .requestMatchers("/api/test/me", "/api/v1/auth/logout").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN", "ROLE_SAUNA_MASTER", "ROLE_TRAINEE")
+                    .requestMatchers("/api/test/admin").hasAnyAuthority("ROLE_ADMIN")
                     .anyRequest().authenticated()
             }
 
@@ -66,12 +68,12 @@ class SecurityConfig(
             }
 
             .exceptionHandling { exceptionHandling ->
-                exceptionHandling.authenticationEntryPoint { _, response, _ ->
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")
+                exceptionHandling.authenticationEntryPoint { _, response, exception ->
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, exception.message)
                 }
             }
 
-            .logout { logout ->
+            .logout { logout->
                 logout
                     .logoutUrl("/api/v1/auth/logout")
                     .addLogoutHandler { _, response, _ ->

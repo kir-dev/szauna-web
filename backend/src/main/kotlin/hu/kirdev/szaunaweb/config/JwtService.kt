@@ -68,6 +68,11 @@ class JwtService(
     }
 
     fun clearAuthTokenCookie(): ResponseCookie {
-        return ResponseCookie.from(authTokenCookieName, "").httpOnly(true).path("/").maxAge(0).build()
-    }
+        return ResponseCookie.from(authTokenCookieName, "")
+            .httpOnly(true)
+            .sameSite("Lax") //TODO:: Strict
+            .secure(false) //TODO:: Set true in production (https)
+            .path("/")
+            .maxAge(0)
+            .build()    }
 }

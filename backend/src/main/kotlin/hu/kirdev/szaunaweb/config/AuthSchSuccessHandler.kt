@@ -8,7 +8,7 @@ import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpHeaders
 import org.springframework.security.core.Authentication
-import org.springframework.security.oauth2.core.user.OAuth2User
+import org.springframework.security.oauth2.core.oidc.user.OidcUser
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler
 import org.springframework.stereotype.Component
 
@@ -22,6 +22,9 @@ class AuthSchSuccessHandler(
 
     @Value("\${szaunaWeb.admins:}")
     private val admins: List<String> = emptyList(),
+
+    @Value("\${szaunaWeb.activeMembershipsScope}")
+    private val activeMembershipsScope: String,
 
     private val jwtService: JwtService,
     private val userEntityRepository: UserEntityRepository
@@ -53,21 +56,19 @@ class AuthSchSuccessHandler(
         response: HttpServletResponse,
         authentication: Authentication
     ) {
-        val oauth2User = authentication.principal as OAuth2User
+        val oidcUser = authentication.principal as OidcUser
+        val internalId = oidcUser.userInfo?.claims["sub"].toString()
+        val email = oidcUser.userInfo?.claims["email"].toString()
+        val name = oidcUser.userInfo?.claims["name"].toString()
 
-        val internalId = oauth2User.name
-        val email = oauth2User.attributes["mail"] as? String
-        val name = oauth2User.attributes["displayName"] as? String
-        val rawMemberships = oauth2User.attributes["eduPersonEntitlement"] as? List<*>
+        val rawMemberships = oidcUser.userInfo?.claims[activeMembershipsScope] as? List<*>
 
-
-
-        if (email == null || name == null || rawMemberships == null) {
+        if (rawMemberships == null) {
             redirectStrategy.sendRedirect(request, response, "$frontendUrl/login?error=forbidden")
             return
         }
 
-        val membershipsList = (rawMemberships).filterIsInstance<Map<String, Any>>()
+        val membershipsList = rawMemberships.filterIsInstance<Map<String, Any>>()
         val role = resolveRole(membershipsList, internalId)
 
         val user = userEntityRepository.findByAuthSub(internalId)?.apply {
@@ -89,7 +90,7 @@ class AuthSchSuccessHandler(
 
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString())
 
-        redirectStrategy.sendRedirect(request, response, frontendUrl)
+        redirectStrategy.sendRedirect(request, response, "$frontendUrl/api/test/me")
     }
 
 

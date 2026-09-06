@@ -12,21 +12,23 @@ spring:
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
             scope:
-              - basic
-              - displayName
-              - mail
-              - eduPersonEntitlement
+              - openid
+              - profile
+              - email
+              - pek.sch.bme.hu:profile
         provider:
           authsch:
             authorization-uri: https://auth.sch.bme.hu/site/login
             token-uri: https://auth.sch.bme.hu/oauth2/token
-            user-info-uri: https://auth.sch.bme.hu/api/profile
-            user-name-attribute: internal_id
+            user-info-uri: https://auth.sch.bme.hu/oidc/userinfo
+            jwk-set-uri: https://auth.sch.bme.hu/oidc/jwks
+            user-name-attribute: sub
 
 szaunaWeb:
   szaunaKorId: 435
   frontendUrl: TODO
   admins: "YOUR_INTERNAL_ID,INTERNAL_ID,INTERNAL_ID"
+  activeMembershipsScope: pek.sch.bme.hu:activeMemberships/v1
   jwt:
     secret: YOUR_SECRET_STRING
     experation: 3600000 #1 hour expiration
