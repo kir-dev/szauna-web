@@ -65,4 +65,11 @@ class OpeningIntervalEntity(
         const val DEFAULT_PARTICIPANT_LIMIT = 8
     }
 
+    constructor(start: LocalDateTime, end: LocalDateTime,opening: OpeningEntity, participantLimit: Int = DEFAULT_PARTICIPANT_LIMIT) : this(
+        intervalStart = start,
+        intervalEnd = end,
+        participantLimit = participantLimit,
+        opening = opening
+    )
+
 }

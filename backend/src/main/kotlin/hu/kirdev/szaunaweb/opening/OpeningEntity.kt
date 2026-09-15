@@ -72,4 +72,13 @@ class OpeningEntity(
     override fun toString(): String {
         return this::class.simpleName + "(id = $id, publicId = $publicId, price = $price, createdAt = $createdAt, updatedAt = $updatedAt)"
     }
+
+    constructor(hostBy: UserEntity, dto: CreateOpeningRequest, openingType: OpeningTypeEntity) : this(
+        openingStart = dto.openingStart,
+        openingEnd = dto.openingEnd,
+        isPrivate = dto.isPrivate,
+        price = dto.price ?: openingType.defaultPrice,
+        hostedBy = hostBy,
+        openingType = openingType,
+    )
 }
