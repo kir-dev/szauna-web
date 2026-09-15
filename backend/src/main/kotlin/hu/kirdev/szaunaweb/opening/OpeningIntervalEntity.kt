@@ -20,8 +20,7 @@ import java.util.UUID
 @Table(
     name = "opening_intervals",
     uniqueConstraints = [
-        UniqueConstraint(name = "uq_opening_intervals_public_id", columnNames = ["public_id"]),
-        UniqueConstraint(name = "uq_opening_intervals_slot", columnNames = ["opening_id", "interval_start"])
+        UniqueConstraint(name = "uq_opening_intervals_public_id", columnNames = ["public_id"])
     ],
     check = [
         CheckConstraint(name = "ck_opening_intervals_range", constraint = "interval_end > interval_start")

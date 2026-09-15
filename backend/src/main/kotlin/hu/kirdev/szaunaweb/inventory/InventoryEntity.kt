@@ -13,10 +13,7 @@ import jakarta.validation.constraints.NotBlank
 
 @Entity
 @Table(
-    name = "inventory",
-    uniqueConstraints = [
-        UniqueConstraint(name = "uq_inventory_name", columnNames = ["name"]),
-    ]
+    name = "inventory"
 )
 class InventoryEntity(
 

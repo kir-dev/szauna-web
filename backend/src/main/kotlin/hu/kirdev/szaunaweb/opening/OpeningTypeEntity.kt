@@ -12,10 +12,7 @@ import jakarta.validation.constraints.NotBlank
 
 @Entity
 @Table(
-    name = "opening_types",
-    uniqueConstraints = [
-        UniqueConstraint(name = "uq_opening_type_name", columnNames = ["name"])
-    ]
+    name = "opening_types"
 )
 class OpeningTypeEntity(
     @field:NotBlank
