@@ -45,14 +45,17 @@ class OpeningIntervalEntity(
     @OneToMany(
         mappedBy = "openingInterval",
         cascade = [CascadeType.PERSIST, CascadeType.MERGE],
-        fetch = FetchType.LAZY,
-        orphanRemoval = true
+        fetch = FetchType.LAZY
     )
     var bookings: MutableList<OpeningBookingEntity> = mutableListOf(),
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "opening_id", nullable = false)
-    var opening: OpeningEntity
+    var opening: OpeningEntity,
+
+    @Column(name = "cancelled", nullable = false)
+    var cancelled: Boolean = false,
+
 ) : AuditedEntity() {
 
     override fun toString(): String {

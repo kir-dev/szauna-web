@@ -19,7 +19,7 @@ import java.util.UUID
 
 @Entity
 @Table(
-    name = "opening_participants",
+    name = "opening_bookings",
     uniqueConstraints = [
         UniqueConstraint(name = "uq_opening_bookings_public_id", columnNames = ["public_id"]),
         UniqueConstraint(name = "uq_opening_bookings_user_interval", columnNames = ["user_id", "interval_id"]),

@@ -64,7 +64,7 @@ class OpeningEntity(
     @JoinColumn(name = "opening_type_id", nullable = false)
     var openingType: OpeningTypeEntity,
 
-    @OneToMany(mappedBy = "opening", cascade = [CascadeType.ALL], orphanRemoval = true)
+    @OneToMany(mappedBy = "opening", cascade = [CascadeType.PERSIST, CascadeType.MERGE])
     var intervals: MutableList<OpeningIntervalEntity> = mutableListOf(),
 
     ) : AuditedEntity() {

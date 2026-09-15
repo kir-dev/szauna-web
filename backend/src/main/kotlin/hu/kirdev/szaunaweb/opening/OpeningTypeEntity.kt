@@ -31,7 +31,7 @@ class OpeningTypeEntity(
     @Column(name = "active", nullable = false)
     var active: Boolean = true,
 
-    @OneToMany(mappedBy = "openingType", cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(mappedBy = "openingType", fetch = FetchType.LAZY)
     var openings: MutableList<OpeningEntity> = mutableListOf()
 
 ) : AuditedEntity() {

@@ -55,7 +55,7 @@ class UserEntity(
     @Column(name = "balance", nullable = false)
     var balance: Int = 0,
 
-    @OneToMany(mappedBy = "user", cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(mappedBy = "user", cascade = [CascadeType.PERSIST, CascadeType.MERGE], fetch = FetchType.LAZY)
     var balanceHistory: MutableList<BalanceHistoryEntity> = mutableListOf(),
 
     @Column(name = "is_banned", nullable = false)
@@ -71,7 +71,7 @@ class UserEntity(
     @Column(name = "banned_at")
     var bannedAt: Instant? = null,
 
-    @OneToMany(mappedBy = "orderedBy", cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(mappedBy = "orderedBy", cascade = [CascadeType.PERSIST, CascadeType.MERGE], fetch = FetchType.LAZY)
     var bookings: MutableList<OpeningBookingEntity> = mutableListOf()
 
 ) : AuditedEntity() {

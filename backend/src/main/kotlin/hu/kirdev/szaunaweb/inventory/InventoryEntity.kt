@@ -28,8 +28,12 @@ class InventoryEntity(
     @Column(name = "quantity", nullable = false)
     var quantity: Int = 0,
 
-    @OneToMany(mappedBy = "inventory", cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(mappedBy = "inventory", cascade = [CascadeType.PERSIST, CascadeType.MERGE], fetch = FetchType.LAZY)
     var history: MutableList<InventoryHistoryEntity> = mutableListOf(),
+
+    @Column(name = "is_archived", nullable = false)
+    var isArchived: Boolean = false,
+
 ) : AuditedEntity() {
 
     override fun toString(): String {
