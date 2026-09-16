@@ -1,7 +1,7 @@
 package hu.kirdev.szaunaweb.opening
 
-enum class BookingStatus {
+enum class IntervalStatus {
     ACTIVE,
     CANCELLED,
-    CANCELLED_BY_USER,
+    DELETED
 }

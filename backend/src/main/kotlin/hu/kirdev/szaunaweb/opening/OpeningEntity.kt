@@ -81,4 +81,5 @@ class OpeningEntity(
         hostedBy = hostBy,
         openingType = openingType,
     )
+
 }

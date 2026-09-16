@@ -28,6 +28,32 @@ data class UpdateOpeningRequest(
     val openingTypeId: Long,
 )
 
+data class UpdateIntervalRequest(
+    @field:NotBlank
+    val openingPublicId: UUID,
+    @field:NotBlank
+    val intervalPublicId: UUID,
+    @field:NotBlank
+    val intervalStart: LocalDateTime,
+    @field:NotBlank
+    val intervalEnd: LocalDateTime,
+    val participantLimit: Int,
+)
+
+data class UpdateOpeningStatusRequest(
+    @field:NotBlank
+    val publicId: UUID,
+    val status: OpeningStatus,
+)
+
+data class UpdateIntervalStatusRequest(
+    @field:NotBlank
+    val openingPublicId: UUID,
+    @field:NotBlank
+    val intervalPublicId: UUID,
+    val status: IntervalStatus,
+)
+
 data class OpeningResponse(
     val publicId: UUID,
     val openingStart: LocalDateTime,
@@ -58,14 +84,14 @@ data class IntervalResponse(
     val intervalEnd: LocalDateTime,
     val participantLimit: Int,
     val availableSeats: Int,
-    val cancelled: Boolean,
+    val status: IntervalStatus,
 ) {
     constructor(interval: OpeningIntervalEntity) : this(
         publicId = interval.publicId!!,
         intervalStart = interval.intervalStart,
         intervalEnd = interval.intervalEnd,
         participantLimit = interval.participantLimit,
-        cancelled = interval.cancelled,
+        status = interval.status,
         availableSeats = interval.participantLimit - interval.bookings.filter { it.status == BookingStatus.ACTIVE }
             .sumOf { it.seatCount }
     )

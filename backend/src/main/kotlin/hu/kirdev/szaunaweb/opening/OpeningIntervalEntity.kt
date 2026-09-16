@@ -5,6 +5,8 @@ import jakarta.persistence.CascadeType
 import jakarta.persistence.CheckConstraint
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
@@ -52,10 +54,11 @@ class OpeningIntervalEntity(
     @JoinColumn(name = "opening_id", nullable = false)
     var opening: OpeningEntity,
 
-    @Column(name = "cancelled", nullable = false)
-    var cancelled: Boolean = false,
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    var status: IntervalStatus = IntervalStatus.ACTIVE,
 
-) : AuditedEntity() {
+    ) : AuditedEntity() {
 
     override fun toString(): String {
         return this::class.simpleName + "(id = $id, publicId = $publicId, intervalStart = $intervalStart, intervalEnd = $intervalEnd, participantLimit = $participantLimit)"
@@ -65,11 +68,20 @@ class OpeningIntervalEntity(
         const val DEFAULT_PARTICIPANT_LIMIT = 8
     }
 
-    constructor(start: LocalDateTime, end: LocalDateTime,opening: OpeningEntity, participantLimit: Int = DEFAULT_PARTICIPANT_LIMIT) : this(
+    constructor(
+        start: LocalDateTime,
+        end: LocalDateTime,
+        opening: OpeningEntity,
+        participantLimit: Int = DEFAULT_PARTICIPANT_LIMIT
+    ) : this(
         intervalStart = start,
         intervalEnd = end,
         participantLimit = participantLimit,
         opening = opening
     )
+
+    fun overlapsWith(start: LocalDateTime, end: LocalDateTime): Boolean {
+        return start.isBefore(this.intervalEnd) || end.isAfter(this.intervalStart)
+    }
 
 }
