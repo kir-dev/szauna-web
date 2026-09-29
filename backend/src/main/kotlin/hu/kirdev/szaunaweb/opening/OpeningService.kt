@@ -2,15 +2,16 @@ package hu.kirdev.szaunaweb.opening
 
 import hu.kirdev.szaunaweb.exception.OpeningException
 import hu.kirdev.szaunaweb.user.UserEntity
+import hu.kirdev.szaunaweb.user.UserRole
 import hu.kirdev.szaunaweb.user.UserService
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.awt.print.Book
 import java.time.Duration
 import java.time.LocalDateTime
 import java.util.UUID
-import kotlin.concurrent.thread
 
 @Service
 class OpeningService(
@@ -25,12 +26,27 @@ class OpeningService(
     companion object {
         const val DEFAULT_PARTICIPANT_LIMIT = 8
         const val DEFAULT_INTERVAL_NUMBERS = 3 //3 equal slot in duration
+        val IGNORED_STATUSES_FOR_OVERLAP = listOf(
+            OpeningStatus.CANCELLED,
+            OpeningStatus.DELETED
+        )
     }
 
     @Transactional
     fun createOpening(userId: UUID, dto: CreateOpeningRequest): OpeningResponse {
         if (dto.openingStart >= dto.openingEnd) throw OpeningException("Opening start must be greater than end!")
+        if (dto.openingStart.isBefore(LocalDateTime.now())) throw OpeningException("Cannot create an opening in the past!")
         val user = userService.findByPublicId(userId)
+        val hasOverlap = openingRepository.existsByStatusNotInAndOpeningStartLessThanAndOpeningEndGreaterThan(
+            statuses = IGNORED_STATUSES_FOR_OVERLAP,
+            end = dto.openingEnd,
+            start = dto.openingStart
+        )
+
+        if (hasOverlap) {
+            throw OpeningException("There is already an active opening scheduled in this time range!")
+        }
+
         val openingType = findOpeningType(dto.openingTypeId)
 
         if (!openingType.active) throw OpeningException("Opening type $openingType is not active!")
@@ -92,6 +108,53 @@ class OpeningService(
 
     }
 
+    private fun hasAccessForPrivateOpening(userId: UUID): Boolean {
+        val user = userService.findByPublicId(userId)
+        if (user.authSub in admins) return true
+        if (user.role != UserRole.USER) return true
+        return false
+    }
+
+    private fun isOpeningCompleted(opening: OpeningEntity): Boolean {
+        return opening.status == OpeningStatus.COMPLETED
+    }
+
+    @Transactional(readOnly = true)
+    fun getOpeningByPublicId(userId: UUID?, publicId: UUID): OpeningResponse {
+        val opening = findOpening(publicId)
+        if (opening.isPrivate) {
+            if (userId == null) {
+                throw OpeningException("This is a private opening, please login to verify your access!")
+            }
+
+            val hasAccess = hasAccessForPrivateOpening(userId)
+
+            if (!hasAccess) {
+                throw OpeningException("You do not have permission to access this private opening!")
+            }
+
+        }
+        return OpeningResponse(opening)
+    }
+
+    @Transactional(readOnly = true)
+    fun getOpenings(
+        userId: UUID?,
+        pageable: Pageable,
+        status: OpeningStatus?,
+        from: LocalDateTime?,
+        to: LocalDateTime?
+    ): Page<OpeningResponse> {
+        var hasAccessToAll = false
+        if (userId != null) {
+            hasAccessToAll = hasAccessForPrivateOpening(userId)
+        }
+
+        val openings = openingRepository.findOpeningWithFilter(status, from, to, pageable, hasAccessToAll)
+
+        return openings.map { OpeningResponse(it) }
+    }
+
 
     //NOT PRIVATE OPENING
     @Transactional(readOnly = true)
@@ -104,8 +167,29 @@ class OpeningService(
     fun updateOpening(userId: UUID, dto: UpdateOpeningRequest): OpeningResponse {
         if (!dto.openingStart.isBefore(dto.openingEnd)) throw OpeningException("Opening start must be before end!")
 
+        if (dto.openingStart.isBefore(LocalDateTime.now())) throw OpeningException("Cannot create an opening in the past!")
 
         val opening = findOpening(dto.publicId)
+
+        val completed = isOpeningCompleted(opening)
+
+        if (completed) {
+            throw OpeningException("After the opening marked as completed, you are unable to modify it!")
+        }
+
+        if (opening.openingStart != dto.openingStart || opening.openingEnd != dto.openingEnd) {
+            val hasOverlap =
+                openingRepository.existsByPublicIdNotAndStatusNotInAndOpeningStartLessThanAndOpeningEndGreaterThan(
+                    dto.publicId,
+                    IGNORED_STATUSES_FOR_OVERLAP,
+                    dto.openingEnd,
+                    dto.openingStart,
+                )
+
+            if (hasOverlap) {
+                throw OpeningException("The modified opening range overlaps with an other active opening!")
+            }
+        }
 
         val user = userService.findByPublicId(userId)
 
@@ -155,6 +239,13 @@ class OpeningService(
         val user = userService.findByPublicId(userId)
 
         checkOpeningPermission(user, opening)
+
+        val completed = isOpeningCompleted(opening)
+
+        if (completed) {
+            throw OpeningException("After the opening marked as completed, you are unable to modify it!")
+        }
+
 
         val interval = opening.intervals.find { it.publicId == dto.intervalPublicId }
             ?: throw OpeningException("No interval found for ${dto.intervalPublicId}")
@@ -239,6 +330,10 @@ class OpeningService(
                 opening.status = OpeningStatus.SCHEDULED
             }
 
+            OpeningStatus.COMPLETED -> {
+                opening.status = OpeningStatus.COMPLETED
+            }
+
             else -> {
                 throw OpeningException("The opening status is invalid!")
             }
@@ -256,6 +351,12 @@ class OpeningService(
         val user = userService.findByPublicId(userId)
 
         checkOpeningPermission(user, opening)
+
+        val completed = isOpeningCompleted(opening)
+
+        if (completed) {
+            throw OpeningException("After the opening marked as completed, you are unable to modify it!")
+        }
 
         when (dto.status) {
             IntervalStatus.ACTIVE -> {
@@ -296,6 +397,13 @@ class OpeningService(
 
         val opening = findOpening(openingId)
 
+        val completed = isOpeningCompleted(opening)
+
+        if (completed) {
+            throw OpeningException("After the opening marked as completed, you are unable to modify it!")
+        }
+
+
         opening.intervals.forEach { interval ->
             interval.status = IntervalStatus.DELETED
             interval.bookings.filter { it.status == BookingStatus.ACTIVE }
@@ -315,6 +423,12 @@ class OpeningService(
         val user = userService.findByPublicId(userId)
 
         checkOpeningPermission(user, opening)
+
+        val completed = isOpeningCompleted(opening)
+
+        if (completed) {
+            throw OpeningException("After the opening marked as completed, you are unable to modify it!")
+        }
 
         val interval = opening.intervals.find { it.publicId == intervalId }
             ?: throw OpeningException("Interval: $intervalId not found!")
