@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletResponse
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
@@ -21,6 +22,16 @@ class SecurityConfig(
     private val authSchSuccessHandler: AuthSchSuccessHandler,
     private val customOncePerRequestFilter: CustomOncePerRequestFilter,
 ) {
+
+    companion object {
+        private val PUBLIC_ENDPOINTS = arrayOf(
+            "/v3/api-docs/**",
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/login/**",
+            "/oauth2/**",
+        )
+    }
 
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
@@ -45,14 +56,12 @@ class SecurityConfig(
 
             .authorizeHttpRequests { authRequest ->
                 authRequest
-                    .requestMatchers(
-                        "/v3/api-docs/**",
-                        "/swagger-ui/**",
-                        "/swagger-ui.html",
-                        "/login/**",
-                        "/oauth2/**",
-                    ).permitAll()
-                    .requestMatchers("/api/test/me", "/api/v1/auth/logout").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN", "ROLE_SAUNA_MASTER", "ROLE_TRAINEE")
+                    .requestMatchers(*PUBLIC_ENDPOINTS).permitAll()
+                    .requestMatchers("/api/test/me", "/api/v1/auth/logout")
+                    .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN", "ROLE_SAUNA_MASTER", "ROLE_TRAINEE")
+
+                    .requestMatchers(HttpMethod.GET, "/api/v1/opening/{publicId}", "/api/v1/opening", "/api/v1/opening/up-coming").permitAll()
+
                     .requestMatchers("/api/test/admin").hasAnyAuthority("ROLE_ADMIN")
                     .anyRequest().authenticated()
             }
@@ -73,7 +82,7 @@ class SecurityConfig(
                 }
             }
 
-            .logout { logout->
+            .logout { logout ->
                 logout
                     .logoutUrl("/api/v1/auth/logout")
                     .addLogoutHandler { _, response, _ ->
