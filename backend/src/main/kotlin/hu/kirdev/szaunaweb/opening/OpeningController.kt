@@ -204,11 +204,12 @@ class OpeningController(
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'SAUNA_MASTER')")
     @ResponseStatus(HttpStatus.CREATED)
-    @PostMapping
+    @PostMapping("/interval")
     fun createInterval(
         @Parameter(hidden = true)
         @AuthenticationPrincipal
         userId: UUID,
+
         @Valid
         @RequestBody
         dto: CreateIntervalRequest
