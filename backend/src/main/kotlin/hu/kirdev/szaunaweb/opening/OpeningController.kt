@@ -170,6 +170,53 @@ class OpeningController(
     }
 
     @Operation(
+        summary = "Create new interval",
+        description = "**Required role:** `ADMIN` or `SAUNA_MASTER`"
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "201",
+                description = "Opening successfully created",
+                content = [Content(schema = Schema(implementation = OpeningResponse::class))]
+            ),
+            ApiResponse(
+                responseCode = "400",
+                description = "Bad request: invalid interval range, overlap with other interval, opening not found, or do not have permissions.",
+                content = [Content(schema = Schema(implementation = ProblemDetail::class))]
+            ),
+            ApiResponse(
+                responseCode = "401",
+                description = "Unauthorized request",
+                content = [Content(schema = Schema(hidden = true))]
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "Forbidden",
+                content = [Content(schema = Schema(hidden = true))]
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "User not found!",
+                content = [Content(schema = Schema(implementation = ProblemDetail::class))]
+            )
+        ]
+    )
+    @PreAuthorize("hasAnyRole('ADMIN', 'SAUNA_MASTER')")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PostMapping
+    fun createInterval(
+        @Parameter(hidden = true)
+        @AuthenticationPrincipal
+        userId: UUID,
+        @Valid
+        @RequestBody
+        dto: CreateIntervalRequest
+    ): OpeningResponse {
+        return openingService.createInterval(userId, dto)
+    }
+
+    @Operation(
         summary = "Update Opening",
         description = "To update the opening you must have `ADMIN` privileges or you need to be the host."
     )
