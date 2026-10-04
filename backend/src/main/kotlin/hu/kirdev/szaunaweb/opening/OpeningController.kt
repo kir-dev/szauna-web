@@ -17,73 +17,15 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.web.bind.annotation.DeleteMapping
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PatchMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.PutMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.ResponseStatus
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.time.LocalDateTime
-import java.util.UUID
+import java.util.*
 
 @RestController
 @RequestMapping("/api/v1/opening")
 class OpeningController(
     private val openingService: OpeningService
 ) {
-
-    @Operation(
-        summary = "Create new Opening",
-        description = "**Required role:** `ADMIN` or `SAUNA_MASTER`"
-    )
-    @ApiResponses(
-        value = [
-            ApiResponse(
-                responseCode = "201",
-                description = "Opening successfully created",
-                content = [Content(schema = Schema(implementation = OpeningResponse::class))]
-            ),
-            ApiResponse(
-                responseCode = "400",
-                description = "Bad request: opening range is invalid, overlap between opening ranges, opening type is inactive or not found.",
-                content = [Content(schema = Schema(implementation = ProblemDetail::class))]
-            ),
-            ApiResponse(
-                responseCode = "401",
-                description = "Unauthorized request",
-                content = [Content(schema = Schema(hidden = true))]
-            ),
-            ApiResponse(
-                responseCode = "403",
-                description = "Forbidden",
-                content = [Content(schema = Schema(hidden = true))]
-            ),
-            ApiResponse(
-                responseCode = "404",
-                description = "User not found!",
-                content = [Content(schema = Schema(implementation = ProblemDetail::class))]
-            )
-        ]
-    )
-    @PreAuthorize("hasAnyRole('ADMIN', 'SAUNA_MASTER')")
-    @ResponseStatus(HttpStatus.CREATED)
-    @PostMapping
-    fun createOpening(
-        @Parameter(hidden = true)
-        @AuthenticationPrincipal
-        userId: UUID,
-        @Valid
-        @RequestBody
-        dto: CreateOpeningRequest
-    ): OpeningResponse {
-        return openingService.createOpening(userId, dto)
-    }
-
 
     @Operation(
         summary = "Get Opening by public id",
@@ -180,6 +122,52 @@ class OpeningController(
         return openingService.getCurrentOpening()
     }
 
+    @Operation(
+        summary = "Create new Opening",
+        description = "**Required role:** `ADMIN` or `SAUNA_MASTER`"
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "201",
+                description = "Opening successfully created",
+                content = [Content(schema = Schema(implementation = OpeningResponse::class))]
+            ),
+            ApiResponse(
+                responseCode = "400",
+                description = "Bad request: opening range is invalid, overlap between opening ranges, opening type is inactive or not found.",
+                content = [Content(schema = Schema(implementation = ProblemDetail::class))]
+            ),
+            ApiResponse(
+                responseCode = "401",
+                description = "Unauthorized request",
+                content = [Content(schema = Schema(hidden = true))]
+            ),
+            ApiResponse(
+                responseCode = "403",
+                description = "Forbidden",
+                content = [Content(schema = Schema(hidden = true))]
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "User not found!",
+                content = [Content(schema = Schema(implementation = ProblemDetail::class))]
+            )
+        ]
+    )
+    @PreAuthorize("hasAnyRole('ADMIN', 'SAUNA_MASTER')")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PostMapping
+    fun createOpening(
+        @Parameter(hidden = true)
+        @AuthenticationPrincipal
+        userId: UUID,
+        @Valid
+        @RequestBody
+        dto: CreateOpeningRequest
+    ): OpeningResponse {
+        return openingService.createOpening(userId, dto)
+    }
 
     @Operation(
         summary = "Update Opening",
