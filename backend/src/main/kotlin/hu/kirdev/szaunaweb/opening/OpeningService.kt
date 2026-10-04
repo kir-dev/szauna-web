@@ -1,6 +1,11 @@
 package hu.kirdev.szaunaweb.opening
 
+import hu.kirdev.szaunaweb.exception.IntervalNotFoundException
+import hu.kirdev.szaunaweb.exception.InvalidTimeRangeException
 import hu.kirdev.szaunaweb.exception.OpeningException
+import hu.kirdev.szaunaweb.exception.OpeningNotFoundException
+import hu.kirdev.szaunaweb.exception.OpeningPermissionException
+import hu.kirdev.szaunaweb.exception.TimeRangeConflictException
 import hu.kirdev.szaunaweb.user.UserEntity
 import hu.kirdev.szaunaweb.user.UserRole
 import hu.kirdev.szaunaweb.user.UserService
@@ -37,13 +42,13 @@ class OpeningService(
         val opening = findOpening(publicId)
         if (opening.isPrivate) {
             if (userId == null) {
-                throw OpeningException("This is a private opening, please login to verify your access!")
+                throw OpeningPermissionException("This is a private opening, please login to verify your access!")
             }
 
             val hasAccess = hasAccessForPrivateOpening(userId)
 
             if (!hasAccess) {
-                throw OpeningException("You do not have permission to access this private opening!")
+                throw OpeningPermissionException("You do not have permission to access this private opening!")
             }
 
         }
@@ -77,8 +82,8 @@ class OpeningService(
 
     @Transactional
     fun createOpening(userId: UUID, dto: CreateOpeningRequest): OpeningResponse {
-        if (dto.openingStart >= dto.openingEnd) throw OpeningException("Opening start must be greater than end!")
-        if (dto.openingStart.isBefore(LocalDateTime.now())) throw OpeningException("Cannot create an opening in the past!")
+        if (dto.openingStart >= dto.openingEnd) throw InvalidTimeRangeException("Opening start must be greater than end!")
+        if (dto.openingStart.isBefore(LocalDateTime.now())) throw InvalidTimeRangeException("Cannot create an opening in the past!")
         val user = userService.findByPublicId(userId)
         val hasOverlap = openingRepository.existsByStatusNotInAndOpeningStartLessThanAndOpeningEndGreaterThan(
             statuses = IGNORED_STATUSES_FOR_OVERLAP,
@@ -87,7 +92,7 @@ class OpeningService(
         )
 
         if (hasOverlap) {
-            throw OpeningException("There is already an active opening scheduled in this time range!")
+            throw TimeRangeConflictException("There is already an active opening scheduled in this time range!")
         }
 
         val openingType = findOpeningType(dto.openingTypeId)
@@ -112,7 +117,7 @@ class OpeningService(
         checkOpeningPermission(user, opening)
 
         if (opening.openingStart.isAfter(dto.intervalStart) || opening.openingEnd.isBefore(dto.intervalEnd)) {
-            throw OpeningException("The interval does not fit into the opening time range!")
+            throw InvalidTimeRangeException("The interval does not fit into the opening time range!")
         }
 
         val intervals = opening.intervals
@@ -122,7 +127,7 @@ class OpeningService(
         }
 
         if (hasOverlap) {
-            throw OpeningException("Cannot create interval: the interval range are overlap with an other interval!")
+            throw TimeRangeConflictException("Cannot create interval: the interval range are overlap with an other interval!")
         }
 
         val newInterval = OpeningIntervalEntity(
@@ -141,9 +146,9 @@ class OpeningService(
 
     @Transactional
     fun updateOpening(userId: UUID, dto: UpdateOpeningRequest): OpeningResponse {
-        if (!dto.openingStart.isBefore(dto.openingEnd)) throw OpeningException("Opening start must be before end!")
+        if (!dto.openingStart.isBefore(dto.openingEnd)) throw InvalidTimeRangeException("Opening start must be before end!")
 
-        if (dto.openingStart.isBefore(LocalDateTime.now())) throw OpeningException("Cannot create an opening in the past!")
+        if (dto.openingStart.isBefore(LocalDateTime.now())) throw InvalidTimeRangeException("Cannot create an opening in the past!")
 
         val opening = findOpening(dto.publicId)
 
@@ -163,7 +168,7 @@ class OpeningService(
                 )
 
             if (hasOverlap) {
-                throw OpeningException("The modified opening range overlaps with an other active opening!")
+                throw TimeRangeConflictException("The modified opening range overlaps with an other active opening!")
             }
         }
 
@@ -179,11 +184,11 @@ class OpeningService(
             val latestIntervalEnd = activeIntervals.maxOf { it.intervalEnd }
 
             if (dto.openingStart.isAfter(earliestIntervalStart)) {
-                throw OpeningException("Cannot delay opening start: the first active interval begins at $earliestIntervalStart.")
+                throw TimeRangeConflictException("Cannot delay opening start: the first active interval begins at $earliestIntervalStart.")
             }
 
             if (dto.openingEnd.isBefore(latestIntervalEnd)) {
-                throw OpeningException("Cannot shorten opening end: the last active interval ends at $latestIntervalEnd.")
+                throw TimeRangeConflictException("Cannot shorten opening end: the last active interval ends at $latestIntervalEnd.")
             }
         }
 
@@ -224,7 +229,7 @@ class OpeningService(
 
 
         val interval = opening.intervals.find { it.publicId == dto.intervalPublicId }
-            ?: throw OpeningException("No interval found for ${dto.intervalPublicId}")
+            ?: throw IntervalNotFoundException("No interval found for ${dto.intervalPublicId}")
 
         val intervals =
             opening.intervals.filter { it.status == IntervalStatus.ACTIVE && it.publicId != dto.intervalPublicId }
@@ -243,13 +248,13 @@ class OpeningService(
         }
 
         if (!dto.intervalStart.isBefore(dto.intervalEnd)) {
-            throw OpeningException("Interval start must be before interval end!")
+            throw InvalidTimeRangeException("Interval start must be before interval end!")
         }
 
         val openingRange = opening.openingStart..opening.openingEnd
 
         if (dto.intervalStart !in openingRange || dto.intervalEnd !in openingRange) {
-            throw OpeningException(
+            throw InvalidTimeRangeException(
                 "Interval (${dto.intervalStart} - ${dto.intervalEnd}) must be within opening hours (${opening.openingStart} - ${opening.openingEnd})!"
             )
         }
@@ -259,7 +264,7 @@ class OpeningService(
         }
 
         if (hasOverlap) {
-            throw OpeningException("The modified interval overlaps with an other active interval!")
+            throw TimeRangeConflictException("The modified interval overlaps with an other active interval!")
         }
 
         interval.intervalStart = dto.intervalStart
@@ -338,7 +343,7 @@ class OpeningService(
             IntervalStatus.ACTIVE -> {
                 val interval =
                     opening.intervals.find { it.status == IntervalStatus.CANCELLED && it.publicId == dto.intervalPublicId }
-                        ?: throw OpeningException("No interval found for ${dto.intervalPublicId} or not canceled!")
+                        ?: throw IntervalNotFoundException("No interval found for ${dto.intervalPublicId} or not canceled!")
 
                 interval.status = IntervalStatus.ACTIVE
             }
@@ -346,7 +351,7 @@ class OpeningService(
             IntervalStatus.CANCELLED -> {
                 val interval =
                     opening.intervals.find { it.status == IntervalStatus.ACTIVE && it.publicId == dto.intervalPublicId }
-                        ?: throw OpeningException("No interval found for ${dto.intervalPublicId} or not active!")
+                        ?: throw IntervalNotFoundException("No interval found for ${dto.intervalPublicId} or not active!")
 
                 interval.status = IntervalStatus.CANCELLED
                 interval.bookings.filter { it.status == BookingStatus.ACTIVE }
@@ -369,7 +374,7 @@ class OpeningService(
     @Transactional
     fun deleteOpening(userId: UUID, openingId: UUID) {
         val user = userService.findByPublicId(userId)
-        if (user.authSub !in admins) throw OpeningException("To delete an opening, you need admin permission!")
+        if (user.authSub !in admins) throw OpeningPermissionException("To delete an opening, you need admin permission!")
 
         val opening = findOpening(openingId)
 
@@ -427,7 +432,7 @@ class OpeningService(
     }
 
     private fun findOpeningType(id: Long): OpeningTypeEntity {
-        return openingTypeRepository.findById(id).orElseThrow { OpeningException("No open type found for id $id") }
+        return openingTypeRepository.findById(id).orElseThrow { OpeningNotFoundException("No open type found for id $id") }
     }
 
     private fun generateDefaultIntervals(
@@ -435,14 +440,16 @@ class OpeningService(
         endTime: LocalDateTime,
         opening: OpeningEntity
     ): MutableList<OpeningIntervalEntity> {
-        require(endTime.isAfter(startTime)) { "End time must be after the start and end time" }
+        if (endTime.isAfter(startTime)) {
+            throw InvalidTimeRangeException("End time must be after the start and end time")
+        }
 
         val totalMinutes = Duration.between(startTime, endTime).toMinutes()
 
         val slotMinutes = totalMinutes / DEFAULT_INTERVAL_NUMBERS
 
-        require(totalMinutes % DEFAULT_INTERVAL_NUMBERS == 0L) {
-            "Total duration ($totalMinutes) cannot be divided equally into $DEFAULT_INTERVAL_NUMBERS slots"
+        if(totalMinutes % DEFAULT_INTERVAL_NUMBERS == 0L) {
+            throw OpeningException("Total duration ($totalMinutes) cannot be divided equally into $DEFAULT_INTERVAL_NUMBERS slots")
         }
 
         val intervals = mutableListOf<OpeningIntervalEntity>()
@@ -463,12 +470,12 @@ class OpeningService(
     }
 
     private fun checkOpeningPermission(user: UserEntity, opening: OpeningEntity) {
-        if (opening.hostedBy != user && (user.authSub !in admins)) throw OpeningException("To update opening, you have to host it or must be a admin!")
+        if (opening.hostedBy != user && (user.authSub !in admins)) throw OpeningPermissionException("To update opening, you have to host it or must be a admin!")
     }
 
     private fun findOpening(publicId: UUID): OpeningEntity {
         return openingRepository.findByPublicId(publicId)
-            ?: throw OpeningException("No open found for $publicId")
+            ?: throw OpeningNotFoundException("No open found for $publicId")
 
     }
 
