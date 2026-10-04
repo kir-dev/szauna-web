@@ -54,6 +54,17 @@ data class UpdateIntervalStatusRequest(
     val status: IntervalStatus,
 )
 
+data class CreateIntervalRequest(
+    @field:NotBlank
+    val publicId: UUID,
+    @field:NotBlank
+    val intervalStart: LocalDateTime,
+    @field:NotBlank
+    val intervalEnd: LocalDateTime,
+    @field:NotBlank
+    val participantLimit: Int,
+)
+
 data class OpeningResponse(
     val publicId: UUID,
     val openingStart: LocalDateTime,
