@@ -62,11 +62,20 @@ class OpeningBookingEntity(
     var chargedAmount: Int? = null,
 
     @Column(name = "charged_at")
-    var chargedAt: Instant? = null,
+    var chargedAt: Instant? = null
 
-    ) : AuditedEntity() {
+) : AuditedEntity() {
 
     override fun toString(): String {
         return this::class.simpleName + "(id = $id, seatCount = $seatCount, appearedCount = $appearedCount, createdAt = $createdAt, updatedAt = $updatedAt)"
     }
+
+    constructor(orderedBy: UserEntity, createdBy: UserEntity, seatCount: Int, openingInterval: OpeningIntervalEntity) : this(
+        orderedBy = orderedBy,
+        createdBy = createdBy,
+        seatCount = seatCount,
+        openingInterval = openingInterval,
+        status = BookingStatus.ACTIVE,
+    )
+
 }

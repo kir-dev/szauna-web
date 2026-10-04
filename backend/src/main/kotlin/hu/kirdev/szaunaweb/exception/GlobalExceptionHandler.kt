@@ -33,6 +33,13 @@ class GlobalExceptionHandler {
         return problemDetail
     }
 
+    @ExceptionHandler(BookingException::class)
+    fun handleBookingException(e: BookingException): ProblemDetail {
+        val problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message ?: "Something went wrong")
+        problemDetail.title = "Booking Exception"
+        return problemDetail
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun handleMethodArgumentNotValidException(e: MethodArgumentNotValidException): ProblemDetail {
         val problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation error")
