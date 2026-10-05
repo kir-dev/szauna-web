@@ -39,13 +39,13 @@ class OpeningController(
                 content = [Content(schema = Schema(implementation = OpeningResponse::class))]
             ),
             ApiResponse(
-                responseCode = "400",
-                description = "Bad request: if you try to visit a private opening without permission or the opening not found!",
+                responseCode = "403",
+                description = "Forbidden, not logged in, do not have permission to private opening",
                 content = [Content(schema = Schema(implementation = ProblemDetail::class))]
             ),
             ApiResponse(
                 responseCode = "404",
-                description = "User not found!",
+                description = "User and Opening not found!",
                 content = [Content(schema = Schema(implementation = ProblemDetail::class))]
             )
         ]
@@ -135,7 +135,7 @@ class OpeningController(
             ),
             ApiResponse(
                 responseCode = "400",
-                description = "Bad request: opening range is invalid, overlap between opening ranges, opening type is inactive or not found.",
+                description = "Invalid time range, the opening type is not active or failed to create equally the interval slots.",
                 content = [Content(schema = Schema(implementation = ProblemDetail::class))]
             ),
             ApiResponse(
@@ -150,7 +150,12 @@ class OpeningController(
             ),
             ApiResponse(
                 responseCode = "404",
-                description = "User not found!",
+                description = "User, Opening or OpeningType not found!",
+                content = [Content(schema = Schema(implementation = ProblemDetail::class))]
+            ),
+            ApiResponse(
+                responseCode = "409",
+                description = "The opening overlaps with other opening!",
                 content = [Content(schema = Schema(implementation = ProblemDetail::class))]
             )
         ]
@@ -182,7 +187,7 @@ class OpeningController(
             ),
             ApiResponse(
                 responseCode = "400",
-                description = "Bad request: invalid interval range, overlap with other interval, opening not found, or do not have permissions.",
+                description = "Invalid time range.",
                 content = [Content(schema = Schema(implementation = ProblemDetail::class))]
             ),
             ApiResponse(
@@ -192,12 +197,17 @@ class OpeningController(
             ),
             ApiResponse(
                 responseCode = "403",
-                description = "Forbidden",
+                description = "Forbidden, or do not have enough permission to update opening.",
                 content = [Content(schema = Schema(hidden = true))]
             ),
             ApiResponse(
                 responseCode = "404",
-                description = "User not found!",
+                description = "User or Opening not found!",
+                content = [Content(schema = Schema(implementation = ProblemDetail::class))]
+            ),
+            ApiResponse(
+                responseCode = "409",
+                description = "Interval overlaps with other interval!",
                 content = [Content(schema = Schema(implementation = ProblemDetail::class))]
             )
         ]
@@ -233,7 +243,7 @@ class OpeningController(
             ),
             ApiResponse(
                 responseCode = "400",
-                description = "Bad request: if the opening range are invalid, overlapped, try to set the past, already marked as `COMPLETED`, or the new range collides with any interval, or the Opening Type is inactive.",
+                description = "Invalid time range, opening is not active or the opening is completed.",
                 content = [Content(schema = Schema(implementation = ProblemDetail::class))]
             ),
             ApiResponse(
@@ -243,12 +253,17 @@ class OpeningController(
             ),
             ApiResponse(
                 responseCode = "403",
-                description = "Forbidden",
+                description = "Forbidden, do not have permission to update opening.",
                 content = [Content(schema = Schema(hidden = true))]
             ),
             ApiResponse(
                 responseCode = "404",
-                description = "User not found!",
+                description = "User or Opening not found!",
+                content = [Content(schema = Schema(implementation = ProblemDetail::class))]
+            ),
+            ApiResponse(
+                responseCode = "409",
+                description = "Opening time range overlaps with other opening or cannot delay because opening conflict with the intervals!",
                 content = [Content(schema = Schema(implementation = ProblemDetail::class))]
             )
         ]
@@ -285,7 +300,7 @@ class OpeningController(
             ),
             ApiResponse(
                 responseCode = "400",
-                description = "Bad request: if the opening already marked as `COMPLETED`, or the interval not found or the seat limit is invalid, or the time range is invalid.",
+                description = "The opening is already completed, conflict with the booked seat and the limit, invalid time range.",
                 content = [Content(schema = Schema(implementation = ProblemDetail::class))]
             ),
             ApiResponse(
@@ -295,12 +310,17 @@ class OpeningController(
             ),
             ApiResponse(
                 responseCode = "403",
-                description = "Forbidden",
+                description = "Forbidden, do not have permission to update interval.",
                 content = [Content(schema = Schema(hidden = true))]
             ),
             ApiResponse(
                 responseCode = "404",
-                description = "User not found!",
+                description = "User, Opening or Interval  not found!",
+                content = [Content(schema = Schema(implementation = ProblemDetail::class))]
+            ),
+            ApiResponse(
+                responseCode = "409",
+                description = "Interval overlaps with other interval!",
                 content = [Content(schema = Schema(implementation = ProblemDetail::class))]
             )
         ]
@@ -340,7 +360,7 @@ class OpeningController(
             ),
             ApiResponse(
                 responseCode = "400",
-                description = "Bad request: if the status is invalid or do not have privileges.",
+                description = "Invalid opening status.",
                 content = [Content(schema = Schema(implementation = ProblemDetail::class))]
             ),
             ApiResponse(
@@ -350,12 +370,12 @@ class OpeningController(
             ),
             ApiResponse(
                 responseCode = "403",
-                description = "Forbidden",
+                description = "Forbidden, do not have permission to update opening.",
                 content = [Content(schema = Schema(hidden = true))]
             ),
             ApiResponse(
                 responseCode = "404",
-                description = "User not found!",
+                description = "User or Opening not found!",
                 content = [Content(schema = Schema(implementation = ProblemDetail::class))]
             )
         ]
@@ -390,7 +410,7 @@ class OpeningController(
             ),
             ApiResponse(
                 responseCode = "400",
-                description = "Bad request: if the status is invalid or do not have privileges or the opening not found or the opening already marked as `COMPLETED` or not interval found for the status.",
+                description = "The opening already marked as completed.",
                 content = [Content(schema = Schema(implementation = ProblemDetail::class))]
             ),
             ApiResponse(
@@ -405,7 +425,7 @@ class OpeningController(
             ),
             ApiResponse(
                 responseCode = "404",
-                description = "User not found!",
+                description = "User, Opening or Interval not found!",
                 content = [Content(schema = Schema(implementation = ProblemDetail::class))]
             )
         ]
@@ -442,10 +462,11 @@ class OpeningController(
             ApiResponse(
                 responseCode = "204",
                 description = "OK - NO CONTENT",
+                content = [Content(schema = Schema(hidden = true))]
             ),
             ApiResponse(
                 responseCode = "400",
-                description = "Bad request: if you are not an admin or the opening already marked as `COMPLETED` or the opening not found.",
+                description = "Opening already marked as completed.",
                 content = [Content(schema = Schema(implementation = ProblemDetail::class))]
             ),
             ApiResponse(
@@ -455,12 +476,12 @@ class OpeningController(
             ),
             ApiResponse(
                 responseCode = "403",
-                description = "Forbidden",
+                description = "Forbidden, do not have permission to delete opening (you are not an admin).",
                 content = [Content(schema = Schema(hidden = true))]
             ),
             ApiResponse(
                 responseCode = "404",
-                description = "User not found!",
+                description = "User or Opening not found!",
                 content = [Content(schema = Schema(implementation = ProblemDetail::class))]
             )
         ]
@@ -492,7 +513,7 @@ class OpeningController(
             ),
             ApiResponse(
                 responseCode = "400",
-                description = "Bad request: if you are not an admin or host of the opening, or the opening already marked as `COMPLETED` or the interval ha `ACTIVE` bookings or the opening not found.",
+                description = "The opening already marked as completed, or has active booking.",
                 content = [Content(schema = Schema(implementation = ProblemDetail::class))]
             ),
             ApiResponse(
@@ -502,12 +523,12 @@ class OpeningController(
             ),
             ApiResponse(
                 responseCode = "403",
-                description = "Forbidden",
+                description = "Forbidden, do not have permission to delete the selected interval.",
                 content = [Content(schema = Schema(hidden = true))]
             ),
             ApiResponse(
                 responseCode = "404",
-                description = "User not found!",
+                description = "User, Opening or Interval not found!",
                 content = [Content(schema = Schema(implementation = ProblemDetail::class))]
             )
         ]
