@@ -412,7 +412,7 @@ class OpeningService(
         }
 
         val interval = opening.intervals.find { it.publicId == intervalId }
-            ?: throw OpeningException("Interval: $intervalId not found!")
+            ?: throw IntervalNotFoundException("Interval: $intervalId not found!")
 
         if (interval.status == IntervalStatus.DELETED) {
             return OpeningResponse(opening)
