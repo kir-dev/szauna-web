@@ -1,11 +1,6 @@
 package hu.kirdev.szaunaweb.opening
 
-import hu.kirdev.szaunaweb.exception.IntervalNotFoundException
-import hu.kirdev.szaunaweb.exception.InvalidTimeRangeException
-import hu.kirdev.szaunaweb.exception.OpeningException
-import hu.kirdev.szaunaweb.exception.OpeningNotFoundException
-import hu.kirdev.szaunaweb.exception.OpeningPermissionException
-import hu.kirdev.szaunaweb.exception.TimeRangeConflictException
+import hu.kirdev.szaunaweb.exception.*
 import hu.kirdev.szaunaweb.user.UserEntity
 import hu.kirdev.szaunaweb.user.UserRole
 import hu.kirdev.szaunaweb.user.UserService
@@ -111,8 +106,8 @@ class OpeningService(
     }
 
     @Transactional
-    fun createInterval(userId: UUID, dto: CreateIntervalRequest): OpeningResponse {
-        val opening = findOpening(dto.publicId)
+    fun createInterval(userId: UUID, dto: CreateIntervalRequest, openingId: UUID): OpeningResponse {
+        val opening = findOpening(openingId)
         val user = userService.findByPublicId(userId)
         checkOpeningPermission(user, opening)
 
@@ -145,12 +140,12 @@ class OpeningService(
     }
 
     @Transactional
-    fun updateOpening(userId: UUID, dto: UpdateOpeningRequest): OpeningResponse {
+    fun updateOpening(userId: UUID, dto: UpdateOpeningRequest, openingId: UUID): OpeningResponse {
         if (!dto.openingStart.isBefore(dto.openingEnd)) throw InvalidTimeRangeException("Opening start must be before end!")
 
         if (dto.openingStart.isBefore(LocalDateTime.now())) throw InvalidTimeRangeException("Cannot create an opening in the past!")
 
-        val opening = findOpening(dto.publicId)
+        val opening = findOpening(openingId)
 
         val completed = isOpeningCompleted(opening)
 
@@ -161,7 +156,7 @@ class OpeningService(
         if (opening.openingStart != dto.openingStart || opening.openingEnd != dto.openingEnd) {
             val hasOverlap =
                 openingRepository.existsByPublicIdNotAndStatusNotInAndOpeningStartLessThanAndOpeningEndGreaterThan(
-                    dto.publicId,
+                    openingId,
                     IGNORED_STATUSES_FOR_OVERLAP,
                     dto.openingEnd,
                     dto.openingStart,
@@ -214,8 +209,8 @@ class OpeningService(
     }
 
     @Transactional
-    fun updateInterval(userId: UUID, dto: UpdateIntervalRequest): OpeningResponse {
-        val opening = findOpening(dto.openingPublicId)
+    fun updateInterval(userId: UUID, dto: UpdateIntervalRequest, openingId: UUID, intervalId: UUID): OpeningResponse {
+        val opening = findOpening(openingId)
 
         val user = userService.findByPublicId(userId)
 
@@ -228,11 +223,11 @@ class OpeningService(
         }
 
 
-        val interval = opening.intervals.find { it.publicId == dto.intervalPublicId }
-            ?: throw IntervalNotFoundException("No interval found for ${dto.intervalPublicId}")
+        val interval = opening.intervals.find { it.publicId == intervalId }
+            ?: throw IntervalNotFoundException("No interval found for $intervalId")
 
         val intervals =
-            opening.intervals.filter { it.status == IntervalStatus.ACTIVE && it.publicId != dto.intervalPublicId }
+            opening.intervals.filter { it.status == IntervalStatus.ACTIVE && it.publicId != intervalId }
 
         if (interval.participantLimit <= dto.participantLimit) {
             interval.participantLimit = dto.participantLimit
@@ -277,8 +272,8 @@ class OpeningService(
     }
 
     @Transactional
-    fun updateOpeningStatus(userId: UUID, dto: UpdateOpeningStatusRequest): OpeningResponse {
-        val opening = findOpening(dto.publicId)
+    fun updateOpeningStatus(userId: UUID, dto: UpdateOpeningStatusRequest, openingId: UUID): OpeningResponse {
+        val opening = findOpening(openingId)
 
         val user = userService.findByPublicId(userId)
 
@@ -326,8 +321,13 @@ class OpeningService(
     }
 
     @Transactional
-    fun updateIntervalStatus(userId: UUID, dto: UpdateIntervalStatusRequest): OpeningResponse {
-        val opening = findOpening(dto.openingPublicId)
+    fun updateIntervalStatus(
+        userId: UUID,
+        dto: UpdateIntervalStatusRequest,
+        openingId: UUID,
+        intervalId: UUID
+    ): OpeningResponse {
+        val opening = findOpening(openingId)
 
         val user = userService.findByPublicId(userId)
 
@@ -342,16 +342,16 @@ class OpeningService(
         when (dto.status) {
             IntervalStatus.ACTIVE -> {
                 val interval =
-                    opening.intervals.find { it.status == IntervalStatus.CANCELLED && it.publicId == dto.intervalPublicId }
-                        ?: throw IntervalNotFoundException("No interval found for ${dto.intervalPublicId} or not canceled!")
+                    opening.intervals.find { it.status == IntervalStatus.CANCELLED && it.publicId == intervalId }
+                        ?: throw IntervalNotFoundException("No interval found for $intervalId or not canceled!")
 
                 interval.status = IntervalStatus.ACTIVE
             }
 
             IntervalStatus.CANCELLED -> {
                 val interval =
-                    opening.intervals.find { it.status == IntervalStatus.ACTIVE && it.publicId == dto.intervalPublicId }
-                        ?: throw IntervalNotFoundException("No interval found for ${dto.intervalPublicId} or not active!")
+                    opening.intervals.find { it.status == IntervalStatus.ACTIVE && it.publicId == intervalId }
+                        ?: throw IntervalNotFoundException("No interval found for $intervalId or not active!")
 
                 interval.status = IntervalStatus.CANCELLED
                 interval.bookings.filter { it.status == BookingStatus.ACTIVE }
@@ -432,7 +432,8 @@ class OpeningService(
     }
 
     private fun findOpeningType(id: Long): OpeningTypeEntity {
-        return openingTypeRepository.findById(id).orElseThrow { OpeningNotFoundException("No open type found for id $id") }
+        return openingTypeRepository.findById(id)
+            .orElseThrow { OpeningNotFoundException("No open type found for id $id") }
     }
 
     private fun generateDefaultIntervals(
@@ -448,7 +449,7 @@ class OpeningService(
 
         val slotMinutes = totalMinutes / DEFAULT_INTERVAL_NUMBERS
 
-        if(totalMinutes % DEFAULT_INTERVAL_NUMBERS == 0L) {
+        if (totalMinutes % DEFAULT_INTERVAL_NUMBERS == 0L) {
             throw OpeningException("Total duration ($totalMinutes) cannot be divided equally into $DEFAULT_INTERVAL_NUMBERS slots")
         }
 
