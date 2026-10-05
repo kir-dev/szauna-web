@@ -204,17 +204,21 @@ class OpeningController(
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'SAUNA_MASTER')")
     @ResponseStatus(HttpStatus.CREATED)
-    @PostMapping("/interval")
+    @PostMapping("/{openingId}/interval")
     fun createInterval(
         @Parameter(hidden = true)
         @AuthenticationPrincipal
         userId: UUID,
 
+        @Parameter(description = "Opening public id", required = true)
+        @PathVariable("openingId")
+        openingId: UUID,
+
         @Valid
         @RequestBody
         dto: CreateIntervalRequest
     ): OpeningResponse {
-        return openingService.createInterval(userId, dto)
+        return openingService.createInterval(userId, dto, openingId)
     }
 
     @Operation(
@@ -251,17 +255,21 @@ class OpeningController(
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'SAUNA_MASTER')")
     @ResponseStatus(HttpStatus.OK)
-    @PutMapping
+    @PutMapping("/{openingId}")
     fun updateOpening(
         @Parameter(hidden = true)
         @AuthenticationPrincipal
         userId: UUID,
 
+        @Parameter(description = "Opening public id", required = true)
+        @PathVariable("openingId")
+        openingId: UUID,
+
         @RequestBody
         dto: UpdateOpeningRequest
 
     ): OpeningResponse {
-        return openingService.updateOpening(userId, dto)
+        return openingService.updateOpening(userId, dto, openingId)
     }
 
 
@@ -299,17 +307,25 @@ class OpeningController(
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'SAUNA_MASTER')")
     @ResponseStatus(HttpStatus.OK)
-    @PutMapping("/interval")
+    @PutMapping("/{openingId}/interval/{intervalId}")
     fun updateInterval(
         @Parameter(hidden = true)
         @AuthenticationPrincipal
         userId: UUID,
 
+        @Parameter(description = "Opening public id", required = true)
+        @PathVariable("openingId")
+        openingId: UUID,
+
+        @Parameter(description = "Interval public id", required = true)
+        @PathVariable("intervalId")
+        intervalId: UUID,
+
         @RequestBody
         dto: UpdateIntervalRequest
 
     ): OpeningResponse {
-        return openingService.updateInterval(userId, dto)
+        return openingService.updateInterval(userId, dto, openingId, intervalId)
     }
 
     @Operation(
@@ -346,16 +362,20 @@ class OpeningController(
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'SAUNA_MASTER')")
     @ResponseStatus(HttpStatus.OK)
-    @PatchMapping
+    @PatchMapping("/{openingId}")
     fun updateOpeningStatus(
         @Parameter(hidden = true)
         @AuthenticationPrincipal
         userId: UUID,
 
+        @Parameter(description = "Opening public id", required = true)
+        @PathVariable("openingId")
+        openingId: UUID,
+
         @RequestBody
         dto: UpdateOpeningStatusRequest
     ): OpeningResponse {
-        return openingService.updateOpeningStatus(userId, dto)
+        return openingService.updateOpeningStatus(userId, dto, openingId)
     }
 
     @Operation(
@@ -392,16 +412,24 @@ class OpeningController(
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'SAUNA_MASTER')")
     @ResponseStatus(HttpStatus.OK)
-    @PatchMapping("/interval")
+    @PatchMapping("/{openingId}/interval/{intervalId}")
     fun updateIntervalStatus(
         @Parameter(hidden = true)
         @AuthenticationPrincipal
         userId: UUID,
 
+        @Parameter(description = "Opening public id", required = true)
+        @PathVariable("openingId")
+        openingId: UUID,
+
+        @Parameter(description = "Interval public id", required = true)
+        @PathVariable("intervalId")
+        intervalId: UUID,
+
         @RequestBody
         dto: UpdateIntervalStatusRequest
     ): OpeningResponse {
-        return openingService.updateIntervalStatus(userId, dto)
+        return openingService.updateIntervalStatus(userId, dto, openingId, intervalId)
     }
 
 
@@ -439,17 +467,17 @@ class OpeningController(
     )
     @PreAuthorize("hasAnyRole('ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @DeleteMapping("/{publicId}")
+    @DeleteMapping("/{openingId}")
     fun deleteOpeningByPublicId(
         @Parameter(hidden = true)
         @AuthenticationPrincipal
         userId: UUID,
 
-        @Parameter(description = "Public ID of the opening")
+        @Parameter(description = "Opening public id", required = true)
         @PathVariable
-        publicId: UUID
+        openingId: UUID
     ) {
-        openingService.deleteOpening(userId, publicId)
+        openingService.deleteOpening(userId, openingId)
     }
 
     @Operation(
@@ -486,22 +514,21 @@ class OpeningController(
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'SAUNA_MASTER')")
     @ResponseStatus(HttpStatus.OK)
-    @DeleteMapping("/{publicId}/interval/{intervalId}")
+    @DeleteMapping("/{openingId}/interval/{intervalId}")
     fun deleteInterval(
         @Parameter(hidden = true)
         @AuthenticationPrincipal
         userId: UUID,
 
-        @Parameter(description = "Public ID of the opening")
+        @Parameter(description = "Opening public id", required = true)
         @PathVariable
-        publicId: UUID,
+        openingId: UUID,
 
         @Parameter(description = "Public ID of the interval")
         @PathVariable
         intervalId: UUID
     ): OpeningResponse {
-        return openingService.deleteInterval(userId, publicId, intervalId)
+        return openingService.deleteInterval(userId, openingId, intervalId)
     }
-
 
 }
