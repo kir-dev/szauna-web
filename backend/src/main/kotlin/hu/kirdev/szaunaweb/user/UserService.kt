@@ -13,4 +13,9 @@ class UserService (
         return userEntityRepository.findByPublicId(userId)?: throw UserNotFoundException("User not found with id $userId")
     }
 
+    fun findByAuthSub(authSub: String): UserEntity{
+        return userEntityRepository.findByAuthSub(authSub)?: throw UserNotFoundException("User not found with authSub $authSub")
+    }
+
+
 }

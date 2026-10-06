@@ -33,14 +33,14 @@ class OpeningService(
     }
 
     @Transactional(readOnly = true)
-    fun getOpeningByPublicId(userId: UUID?, publicId: UUID): OpeningResponse {
+    fun getOpeningByPublicId(authSub: String?, publicId: UUID): OpeningResponse {
         val opening = findOpening(publicId)
         if (opening.isPrivate) {
-            if (userId == null) {
+            if (authSub == null) {
                 throw OpeningPermissionException("This is a private opening, please login to verify your access!")
             }
 
-            val hasAccess = hasAccessForPrivateOpening(userId)
+            val hasAccess = hasAccessForPrivateOpening(authSub)
 
             if (!hasAccess) {
                 throw OpeningPermissionException("You do not have permission to access this private opening!")
@@ -52,15 +52,15 @@ class OpeningService(
 
     @Transactional(readOnly = true)
     fun getOpenings(
-        userId: UUID?,
+        authSub: String?,
         pageable: Pageable,
         status: OpeningStatus?,
         from: LocalDateTime?,
         to: LocalDateTime?
     ): Page<OpeningResponse> {
         var hasAccessToAll = false
-        if (userId != null) {
-            hasAccessToAll = hasAccessForPrivateOpening(userId)
+        if (authSub != null) {
+            hasAccessToAll = hasAccessForPrivateOpening(authSub)
         }
 
         val openings = openingRepository.findOpeningWithFilter(status, from, to, pageable, hasAccessToAll)
@@ -76,10 +76,10 @@ class OpeningService(
     }
 
     @Transactional
-    fun createOpening(userId: UUID, dto: CreateOpeningRequest): OpeningResponse {
+    fun createOpening(authSub: String, dto: CreateOpeningRequest): OpeningResponse {
         if (dto.openingStart >= dto.openingEnd) throw InvalidTimeRangeException("Opening start must be greater than end!")
         if (dto.openingStart.isBefore(LocalDateTime.now())) throw InvalidTimeRangeException("Cannot create an opening in the past!")
-        val user = userService.findByPublicId(userId)
+        val user = userService.findByAuthSub(authSub)
         val hasOverlap = openingRepository.existsByStatusNotInAndOpeningStartLessThanAndOpeningEndGreaterThan(
             statuses = IGNORED_STATUSES_FOR_OVERLAP,
             end = dto.openingEnd,
@@ -106,9 +106,9 @@ class OpeningService(
     }
 
     @Transactional
-    fun createInterval(userId: UUID, dto: CreateIntervalRequest, openingId: UUID): OpeningResponse {
+    fun createInterval(authSub: String, dto: CreateIntervalRequest, openingId: UUID): OpeningResponse {
         val opening = findOpening(openingId)
-        val user = userService.findByPublicId(userId)
+        val user = userService.findByAuthSub(authSub)
         checkOpeningPermission(user, opening)
 
         if (opening.openingStart.isAfter(dto.intervalStart) || opening.openingEnd.isBefore(dto.intervalEnd)) {
@@ -140,7 +140,7 @@ class OpeningService(
     }
 
     @Transactional
-    fun updateOpening(userId: UUID, dto: UpdateOpeningRequest, openingId: UUID): OpeningResponse {
+    fun updateOpening(authSub: String, dto: UpdateOpeningRequest, openingId: UUID): OpeningResponse {
         if (!dto.openingStart.isBefore(dto.openingEnd)) throw InvalidTimeRangeException("Opening start must be before end!")
 
         if (dto.openingStart.isBefore(LocalDateTime.now())) throw InvalidTimeRangeException("Cannot create an opening in the past!")
@@ -167,7 +167,7 @@ class OpeningService(
             }
         }
 
-        val user = userService.findByPublicId(userId)
+        val user = userService.findByAuthSub(authSub)
 
         checkOpeningPermission(user, opening)
 
@@ -209,10 +209,10 @@ class OpeningService(
     }
 
     @Transactional
-    fun updateInterval(userId: UUID, dto: UpdateIntervalRequest, openingId: UUID, intervalId: UUID): OpeningResponse {
+    fun updateInterval(authSub: String, dto: UpdateIntervalRequest, openingId: UUID, intervalId: UUID): OpeningResponse {
         val opening = findOpening(openingId)
 
-        val user = userService.findByPublicId(userId)
+        val user = userService.findByAuthSub(authSub)
 
         checkOpeningPermission(user, opening)
 
@@ -272,10 +272,10 @@ class OpeningService(
     }
 
     @Transactional
-    fun updateOpeningStatus(userId: UUID, dto: UpdateOpeningStatusRequest, openingId: UUID): OpeningResponse {
+    fun updateOpeningStatus(authSub: String, dto: UpdateOpeningStatusRequest, openingId: UUID): OpeningResponse {
         val opening = findOpening(openingId)
 
-        val user = userService.findByPublicId(userId)
+        val user = userService.findByAuthSub(authSub)
 
         checkOpeningPermission(user, opening)
 
@@ -322,14 +322,14 @@ class OpeningService(
 
     @Transactional
     fun updateIntervalStatus(
-        userId: UUID,
+        authSub: String,
         dto: UpdateIntervalStatusRequest,
         openingId: UUID,
         intervalId: UUID
     ): OpeningResponse {
         val opening = findOpening(openingId)
 
-        val user = userService.findByPublicId(userId)
+        val user = userService.findByAuthSub(authSub)
 
         checkOpeningPermission(user, opening)
 
@@ -372,8 +372,8 @@ class OpeningService(
     }
 
     @Transactional
-    fun deleteOpening(userId: UUID, openingId: UUID) {
-        val user = userService.findByPublicId(userId)
+    fun deleteOpening(authSub: String, openingId: UUID) {
+        val user = userService.findByAuthSub(authSub)
         if (user.authSub !in admins) throw OpeningPermissionException("To delete an opening, you need admin permission!")
 
         val opening = findOpening(openingId)
@@ -397,11 +397,11 @@ class OpeningService(
     }
 
     @Transactional
-    fun deleteInterval(userId: UUID, openingId: UUID, intervalId: UUID): OpeningResponse {
+    fun deleteInterval(authSub: String, openingId: UUID, intervalId: UUID): OpeningResponse {
 
         val opening = findOpening(openingId)
 
-        val user = userService.findByPublicId(userId)
+        val user = userService.findByAuthSub(authSub)
 
         checkOpeningPermission(user, opening)
 
@@ -480,8 +480,8 @@ class OpeningService(
 
     }
 
-    private fun hasAccessForPrivateOpening(userId: UUID): Boolean {
-        val user = userService.findByPublicId(userId)
+    private fun hasAccessForPrivateOpening(authSub: String): Boolean {
+        val user = userService.findByAuthSub(authSub)
         if (user.authSub in admins) return true
         if (user.role != UserRole.USER) return true
         return false

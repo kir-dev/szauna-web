@@ -37,7 +37,6 @@ class CustomOncePerRequestFilter(
                 val auth = UsernamePasswordAuthenticationToken(sub, null, authorities)
                 auth.details = WebAuthenticationDetailsSource().buildDetails(request)
                 SecurityContextHolder.getContext().authentication = auth
-
             }
         }
 

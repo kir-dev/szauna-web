@@ -55,13 +55,13 @@ class OpeningController(
     fun findByPublicId(
         @Parameter(hidden = true)
         @AuthenticationPrincipal
-        userId: UUID?,
+        authSub: String?,
 
         @Parameter(description = "Opening public id")
         @PathVariable
         publicId: UUID
     ): OpeningResponse {
-        return openingService.getOpeningByPublicId(userId, publicId)
+        return openingService.getOpeningByPublicId(authSub, publicId)
     }
 
 
@@ -81,7 +81,7 @@ class OpeningController(
     fun findOpenings(
         @AuthenticationPrincipal
         @Parameter(hidden = true)
-        userId: UUID?,
+        authSub: String?,
 
         @Parameter(description = "Filter by status", example = "SCHEDULED")
         @RequestParam(required = false)
@@ -101,7 +101,7 @@ class OpeningController(
         @PageableDefault(size = 10, sort = ["openingStart"], direction = Sort.Direction.DESC)
         pageable: Pageable
     ): Page<OpeningResponse> {
-        return openingService.getOpenings(userId, pageable, status, from, to)
+        return openingService.getOpenings(authSub, pageable, status, from, to)
     }
 
     @Operation(
@@ -166,12 +166,12 @@ class OpeningController(
     fun createOpening(
         @Parameter(hidden = true)
         @AuthenticationPrincipal
-        userId: UUID,
+        authSub: String,
         @Valid
         @RequestBody
         dto: CreateOpeningRequest
     ): OpeningResponse {
-        return openingService.createOpening(userId, dto)
+        return openingService.createOpening(authSub, dto)
     }
 
     @Operation(
@@ -218,7 +218,7 @@ class OpeningController(
     fun createInterval(
         @Parameter(hidden = true)
         @AuthenticationPrincipal
-        userId: UUID,
+        authSub: String,
 
         @Parameter(description = "Opening public id", required = true)
         @PathVariable("openingId")
@@ -228,7 +228,7 @@ class OpeningController(
         @RequestBody
         dto: CreateIntervalRequest
     ): OpeningResponse {
-        return openingService.createInterval(userId, dto, openingId)
+        return openingService.createInterval(authSub, dto, openingId)
     }
 
     @Operation(
@@ -274,7 +274,7 @@ class OpeningController(
     fun updateOpening(
         @Parameter(hidden = true)
         @AuthenticationPrincipal
-        userId: UUID,
+        authSub: String,
 
         @Parameter(description = "Opening public id", required = true)
         @PathVariable("openingId")
@@ -284,7 +284,7 @@ class OpeningController(
         dto: UpdateOpeningRequest
 
     ): OpeningResponse {
-        return openingService.updateOpening(userId, dto, openingId)
+        return openingService.updateOpening(authSub, dto, openingId)
     }
 
 
@@ -331,7 +331,7 @@ class OpeningController(
     fun updateInterval(
         @Parameter(hidden = true)
         @AuthenticationPrincipal
-        userId: UUID,
+        authSub: String,
 
         @Parameter(description = "Opening public id", required = true)
         @PathVariable("openingId")
@@ -345,7 +345,7 @@ class OpeningController(
         dto: UpdateIntervalRequest
 
     ): OpeningResponse {
-        return openingService.updateInterval(userId, dto, openingId, intervalId)
+        return openingService.updateInterval(authSub, dto, openingId, intervalId)
     }
 
     @Operation(
@@ -386,7 +386,7 @@ class OpeningController(
     fun updateOpeningStatus(
         @Parameter(hidden = true)
         @AuthenticationPrincipal
-        userId: UUID,
+        authSub: String,
 
         @Parameter(description = "Opening public id", required = true)
         @PathVariable("openingId")
@@ -395,7 +395,7 @@ class OpeningController(
         @RequestBody
         dto: UpdateOpeningStatusRequest
     ): OpeningResponse {
-        return openingService.updateOpeningStatus(userId, dto, openingId)
+        return openingService.updateOpeningStatus(authSub, dto, openingId)
     }
 
     @Operation(
@@ -436,7 +436,7 @@ class OpeningController(
     fun updateIntervalStatus(
         @Parameter(hidden = true)
         @AuthenticationPrincipal
-        userId: UUID,
+        authSub: String,
 
         @Parameter(description = "Opening public id", required = true)
         @PathVariable("openingId")
@@ -449,7 +449,7 @@ class OpeningController(
         @RequestBody
         dto: UpdateIntervalStatusRequest
     ): OpeningResponse {
-        return openingService.updateIntervalStatus(userId, dto, openingId, intervalId)
+        return openingService.updateIntervalStatus(authSub, dto, openingId, intervalId)
     }
 
 
@@ -492,13 +492,13 @@ class OpeningController(
     fun deleteOpeningByPublicId(
         @Parameter(hidden = true)
         @AuthenticationPrincipal
-        userId: UUID,
+        authSub: String,
 
         @Parameter(description = "Opening public id", required = true)
         @PathVariable
         openingId: UUID
     ) {
-        openingService.deleteOpening(userId, openingId)
+        openingService.deleteOpening(authSub, openingId)
     }
 
     @Operation(
@@ -539,7 +539,7 @@ class OpeningController(
     fun deleteInterval(
         @Parameter(hidden = true)
         @AuthenticationPrincipal
-        userId: UUID,
+        authSub: String,
 
         @Parameter(description = "Opening public id", required = true)
         @PathVariable
@@ -549,7 +549,7 @@ class OpeningController(
         @PathVariable
         intervalId: UUID
     ): OpeningResponse {
-        return openingService.deleteInterval(userId, openingId, intervalId)
+        return openingService.deleteInterval(authSub, openingId, intervalId)
     }
 
 }
