@@ -42,7 +42,7 @@ class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(OpeningNotFoundException::class)
-    fun handleOpeningNotFoundException(e: InvalidTimeRangeException): ProblemDetail {
+    fun handleOpeningNotFoundException(e: OpeningNotFoundException): ProblemDetail {
         val problemDetail =
             ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.message ?: "Something went wrong")
         problemDetail.title = "OPENING_NOT_FOUND"
