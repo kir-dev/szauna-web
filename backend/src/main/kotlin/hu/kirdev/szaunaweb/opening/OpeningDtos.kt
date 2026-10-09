@@ -1,35 +1,36 @@
 package hu.kirdev.szaunaweb.opening
 
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotNull
 import java.time.LocalDateTime
 import java.util.*
 
 data class CreateOpeningRequest(
-    @field:NotBlank
+    @field:NotNull
     val openingStart: LocalDateTime,
-    @field:NotBlank
+    @field:NotNull
     val openingEnd: LocalDateTime,
     val isPrivate: Boolean = false,
     val price: Int? = null,
-    @field:NotBlank
+    @field:NotNull
     val openingTypeId: Long,
     val generateDefaultIntervals: Boolean = true,
 )
 
 data class UpdateOpeningRequest(
-    @field:NotBlank
+    @field:NotNull
     val openingStart: LocalDateTime,
-    @field:NotBlank
+    @field:NotNull
     val openingEnd: LocalDateTime,
     val price: Int? = null,
-    @field:NotBlank
+    @field:NotNull
     val openingTypeId: Long,
 )
 
 data class UpdateIntervalRequest(
-    @field:NotBlank
+    @field:NotNull
     val intervalStart: LocalDateTime,
-    @field:NotBlank
+    @field:NotNull
     val intervalEnd: LocalDateTime,
     val participantLimit: Int,
 )
@@ -43,11 +44,11 @@ data class UpdateIntervalStatusRequest(
 )
 
 data class CreateIntervalRequest(
-    @field:NotBlank
+    @field:NotNull
     val intervalStart: LocalDateTime,
-    @field:NotBlank
+    @field:NotNull
     val intervalEnd: LocalDateTime,
-    @field:NotBlank
+    @field:NotNull
     val participantLimit: Int,
 )
 

@@ -295,6 +295,100 @@ class OpeningServiceTest {
     inner class CreateOpeningTest {
 
         @Test
+        @DisplayName("Duration not divisible by 3, expected OpeningException")
+        fun `duration not divisible into default intervals`() {
+            val start = LocalDateTime.now().plusDays(2)
+            val end = start.plusMinutes(100) // 100 % 3 != 0
+            val dto = CreateOpeningRequest(
+                openingStart = start,
+                openingEnd = end,
+                openingTypeId = 1L,
+                generateDefaultIntervals = true
+            )
+
+            every { userService.findByAuthSub("hostAuthSub") } returns createDummyUser(authSub = "hostAuthSub")
+            every {
+                openingEntityRepository.existsByStatusNotInAndOpeningStartLessThanAndOpeningEndGreaterThan(any(), any(), any())
+            } returns false
+            every { openingTypeEntityRepository.findById(1L) } returns Optional.of(createDummyOpeningType(active = true))
+
+            assertThrows<OpeningException> {
+                service.createOpening("hostAuthSub", dto)
+            }
+            verify(exactly = 0) { openingEntityRepository.saveAndFlush(any()) }
+        }
+
+        @Test
+        @DisplayName("Opening type not found, expected OpeningNotFoundException")
+        fun `opening type not found`() {
+            val start = LocalDateTime.now().plusDays(2)
+            val dto = CreateOpeningRequest(
+                openingStart = start,
+                openingEnd = start.plusHours(3),
+                openingTypeId = 99L,
+                generateDefaultIntervals = false
+            )
+
+            every { userService.findByAuthSub("hostAuthSub") } returns createDummyUser(authSub = "hostAuthSub")
+            every {
+                openingEntityRepository.existsByStatusNotInAndOpeningStartLessThanAndOpeningEndGreaterThan(any(), any(), any())
+            } returns false
+            every { openingTypeEntityRepository.findById(99L) } returns Optional.empty()
+
+            assertThrows<OpeningNotFoundException> {
+                service.createOpening("hostAuthSub", dto)
+            }
+        }
+
+        // A meglévő "create successfully with default intervals" teszt HELYETT (az intervallumok
+// tényleges időpontjait is ellenőrzi, nem csak a darabszámot):
+        @Test
+        @DisplayName("Successful creation (generateDefaultIntervals = true) splits the range into 3 equal slots")
+        fun `create successfully with default intervals`() {
+            val start = LocalDateTime.now().plusDays(2)
+            val end = start.plusMinutes(180)
+            val dto = CreateOpeningRequest(
+                openingStart = start,
+                openingEnd = end,
+                openingTypeId = 1L,
+                generateDefaultIntervals = true
+            )
+            val host = createDummyUser(authSub = "hostAuthSub")
+
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+            every {
+                openingEntityRepository.existsByStatusNotInAndOpeningStartLessThanAndOpeningEndGreaterThan(any(), any(), any())
+            } returns false
+            every { openingTypeEntityRepository.findById(1L) } returns Optional.of(createDummyOpeningType(active = true))
+
+            var savedEntity: OpeningEntity? = null
+            every { openingEntityRepository.saveAndFlush(any()) } answers {
+                val entity = firstArg<OpeningEntity>()
+                entity.publicId = dummyOpeningId
+                entity.intervals.forEach { interval ->
+                    if (interval.publicId == null) interval.publicId = UUID.randomUUID()
+                }
+                savedEntity = entity
+                entity
+            }
+
+            val response = service.createOpening("hostAuthSub", dto)
+
+            assertNotNull(response)
+            assertEquals(3, response.intervals.size)
+
+            val intervals = savedEntity!!.intervals
+            assertEquals(start, intervals[0].intervalStart)
+            assertEquals(start.plusMinutes(60), intervals[0].intervalEnd)
+            assertEquals(start.plusMinutes(60), intervals[1].intervalStart)
+            assertEquals(start.plusMinutes(120), intervals[1].intervalEnd)
+            assertEquals(start.plusMinutes(120), intervals[2].intervalStart)
+            assertEquals(end, intervals[2].intervalEnd)
+            intervals.forEach { assertEquals(OpeningService.DEFAULT_PARTICIPANT_LIMIT, it.participantLimit) }
+        }
+
+
+        @Test
         @DisplayName("Start in the past, expected InvalidTimeRangeException")
         fun `start in the past with exception`() {
             val dto = CreateOpeningRequest(
@@ -411,52 +505,41 @@ class OpeningServiceTest {
             verify(exactly = 1) { openingEntityRepository.saveAndFlush(any()) }
         }
 
-        @Test
-        @DisplayName("Successful creation (generateDefaultIntervals = true)")
-        fun `create successfully with default intervals`() {
-            val start = LocalDateTime.now().plusDays(2)
-            val end = start.plusMinutes(180)
-            val dto = CreateOpeningRequest(
-                openingStart = start,
-                openingEnd = end,
-                openingTypeId = 1L,
-                generateDefaultIntervals = true
-            )
-            val host = createDummyUser(authSub = "hostAuthSub")
-            val openingType = createDummyOpeningType(active = true)
-
-            every { userService.findByAuthSub("hostAuthSub") } returns host
-            every {
-                openingEntityRepository.existsByStatusNotInAndOpeningStartLessThanAndOpeningEndGreaterThan(
-                    any(),
-                    any(),
-                    any()
-                )
-            } returns false
-            every { openingTypeEntityRepository.findById(1L) } returns Optional.of(openingType)
-            every { openingEntityRepository.saveAndFlush(any()) } answers {
-                val entity = firstArg<OpeningEntity>()
-                entity.publicId = dummyOpeningId
-                entity.intervals.forEach { interval ->
-                    if (interval.publicId == null) {
-                        interval.publicId = UUID.randomUUID()
-                    }
-                }
-                entity
-            }
-
-            val response = service.createOpening("hostAuthSub", dto)
-
-            assertNotNull(response)
-            assertEquals(3, response.intervals.size)
-            verify(exactly = 1) { openingEntityRepository.saveAndFlush(any()) }
-        }
 
     }
 
     @Nested
     @DisplayName("deleteOpening")
     inner class DeleteOpening {
+
+
+        @Test
+        @DisplayName("Delete opening marks intervals as DELETED and cancels active bookings")
+        fun `delete opening cascades to intervals and bookings`() {
+            val adminUser = createDummyUser(authSub = adminAuthSub)
+            val opening = createDummyOpening(host = adminUser, status = OpeningStatus.SCHEDULED)
+            val booking = mockk<OpeningBookingEntity>(relaxed = true) {
+                every { status } returns BookingStatus.ACTIVE
+            }
+            val interval = createDummyInterval(
+                opening = opening,
+                start = opening.openingStart,
+                end = opening.openingStart.plusMinutes(60),
+                bookings = mutableListOf(booking)
+            )
+            opening.intervals.add(interval)
+
+            every { userService.findByAuthSub(adminAuthSub) } returns adminUser
+            every { openingEntityRepository.findByPublicId(any()) } returns opening
+            every { openingEntityRepository.save(any()) } answers { firstArg() }
+
+            service.deleteOpening(adminAuthSub, dummyOpeningId)
+
+            verify(exactly = 1) { interval.status = IntervalStatus.DELETED }
+            verify(exactly = 1) { booking.status = BookingStatus.CANCELLED }
+            assertEquals(OpeningStatus.DELETED, opening.status)
+        }
+
 
         @Test
         @DisplayName("Not admin user delete opening (OpeningPermissionException)")
@@ -504,6 +587,66 @@ class OpeningServiceTest {
     @Nested
     @DisplayName("createInterval")
     inner class CreateIntervalTests {
+
+
+        @Test
+        @DisplayName("Interval ending exactly at the opening end is valid")
+        fun `interval can end exactly at opening end`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host)
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+            every { openingEntityRepository.saveAndFlush(any<OpeningEntity>()) } answers {
+                val entity = firstArg<OpeningEntity>()
+                entity.intervals.forEach { if (it.publicId == null) it.publicId = UUID.randomUUID() }
+                entity
+            }
+
+            val request = CreateIntervalRequest(
+                intervalStart = opening.openingEnd.minusMinutes(60),
+                intervalEnd = opening.openingEnd,
+                participantLimit = 8
+            )
+
+            service.createInterval("hostAuthSub", request, dummyOpeningId)
+
+            assertEquals(1, opening.intervals.size)
+        }
+
+        @Test
+        @DisplayName("CANCELLED interval does not count as overlap")
+        fun `cancelled interval does not block new interval`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host)
+            opening.intervals.add(
+                createDummyInterval(
+                    opening = opening,
+                    start = opening.openingStart,
+                    end = opening.openingStart.plusMinutes(60),
+                    status = IntervalStatus.CANCELLED
+                )
+            )
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+            every { openingEntityRepository.saveAndFlush(any<OpeningEntity>()) } answers {
+                val entity = firstArg<OpeningEntity>()
+                entity.intervals.forEach { if (it.publicId == null) it.publicId = UUID.randomUUID() }
+                entity
+            }
+
+            val request = CreateIntervalRequest(
+                intervalStart = opening.openingStart.plusMinutes(10),
+                intervalEnd = opening.openingStart.plusMinutes(50),
+                participantLimit = 8
+            )
+
+            service.createInterval("hostAuthSub", request, dummyOpeningId)
+
+            assertEquals(2, opening.intervals.size)
+        }
+
 
         @Test
         @DisplayName("Create interval without admin or  host permission.")
@@ -619,15 +762,9 @@ class OpeningServiceTest {
             every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
             every { userService.findByAuthSub("intruderAuthSub") } returns intruder
 
-            every {
-                openingEntityRepository.existsByPublicIdNotAndStatusNotInAndOpeningStartLessThanAndOpeningEndGreaterThan(
-                    any(), any(), any(), any()
-                )
-            } returns false
-
             val request = UpdateOpeningRequest(
-                openingStart = LocalDateTime.now().plusDays(2),
-                openingEnd = LocalDateTime.now().plusDays(2).plusHours(2),
+                openingStart = opening.openingStart,
+                openingEnd = opening.openingEnd,
                 openingTypeId = 1L,
                 price = null
             )
@@ -635,6 +772,153 @@ class OpeningServiceTest {
             assertThrows<OpeningPermissionException> {
                 service.updateOpening("intruderAuthSub", request, dummyOpeningId)
             }
+            verify(exactly = 0) { openingEntityRepository.saveAndFlush(any()) }
+        }
+
+        @Test
+        @DisplayName("Update with start in the past, expected InvalidTimeRangeException")
+        fun `update with past start`() {
+            val request = UpdateOpeningRequest(
+                openingStart = LocalDateTime.now().minusHours(1),
+                openingEnd = LocalDateTime.now().plusHours(2),
+                openingTypeId = 1L,
+                price = null
+            )
+
+            assertThrows<InvalidTimeRangeException> {
+                service.updateOpening("hostAuthSub", request, dummyOpeningId)
+            }
+        }
+
+        @Test
+        @DisplayName("Cannot delay opening start past the first active interval")
+        fun `cannot delay opening start after first interval`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host)
+            opening.intervals.add(
+                createDummyInterval(
+                    opening = opening,
+                    start = opening.openingStart,
+                    end = opening.openingStart.plusMinutes(60)
+                )
+            )
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+            every {
+                openingEntityRepository.existsByPublicIdNotAndStatusNotInAndOpeningStartLessThanAndOpeningEndGreaterThan(any(), any(), any(), any())
+            } returns false
+
+            val request = UpdateOpeningRequest(
+                openingStart = opening.openingStart.plusMinutes(10), // késleltetés
+                openingEnd = opening.openingEnd,
+                openingTypeId = 1L,
+                price = null
+            )
+
+            assertThrows<TimeRangeConflictException> {
+                service.updateOpening("hostAuthSub", request, dummyOpeningId)
+            }
+        }
+
+        @Test
+        @DisplayName("Cannot shorten opening end before the last active interval")
+        fun `cannot shorten opening end before last interval`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host)
+            opening.intervals.add(
+                createDummyInterval(
+                    opening = opening,
+                    start = opening.openingEnd.minusMinutes(60),
+                    end = opening.openingEnd
+                )
+            )
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+            every {
+                openingEntityRepository.existsByPublicIdNotAndStatusNotInAndOpeningStartLessThanAndOpeningEndGreaterThan(any(), any(), any(), any())
+            } returns false
+
+            val request = UpdateOpeningRequest(
+                openingStart = opening.openingStart,
+                openingEnd = opening.openingEnd.minusMinutes(10), // rövidítés
+                openingTypeId = 1L,
+                price = null
+            )
+
+            assertThrows<TimeRangeConflictException> {
+                service.updateOpening("hostAuthSub", request, dummyOpeningId)
+            }
+        }
+
+        @Test
+        @DisplayName("Overlap with another opening on time change, expected TimeRangeConflictException")
+        fun `update overlapping with another opening`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host)
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every {
+                openingEntityRepository.existsByPublicIdNotAndStatusNotInAndOpeningStartLessThanAndOpeningEndGreaterThan(any(), any(), any(), any())
+            } returns true
+
+            val request = UpdateOpeningRequest(
+                openingStart = opening.openingStart.plusHours(1),
+                openingEnd = opening.openingEnd.plusHours(1),
+                openingTypeId = 1L,
+                price = null
+            )
+
+            assertThrows<TimeRangeConflictException> {
+                service.updateOpening("hostAuthSub", request, dummyOpeningId)
+            }
+        }
+
+        @Test
+        @DisplayName("Inactive new opening type, expected OpeningException")
+        fun `update to inactive opening type`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host)
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+            every { openingTypeEntityRepository.findById(2L) } returns Optional.of(createDummyOpeningType(active = false))
+
+            val request = UpdateOpeningRequest(
+                openingStart = opening.openingStart,
+                openingEnd = opening.openingEnd,
+                openingTypeId = 2L,
+                price = null
+            )
+
+            assertThrows<OpeningException> {
+                service.updateOpening("hostAuthSub", request, dummyOpeningId)
+            }
+        }
+
+        @Test
+        @DisplayName("price == null resets the price to the opening type default")
+        fun `update with null price falls back to default price`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host)
+            opening.price = 3000 // eltér a típus default árától (2500)
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+            every { openingTypeEntityRepository.findById(any()) } returns Optional.of(createDummyOpeningType(active = true))
+            every { openingEntityRepository.saveAndFlush(any()) } answers { firstArg() }
+
+            val request = UpdateOpeningRequest(
+                openingStart = opening.openingStart,
+                openingEnd = opening.openingEnd,
+                openingTypeId = 1L,
+                price = null
+            )
+
+            service.updateOpening("hostAuthSub", request, dummyOpeningId)
+
+            assertEquals(2500, opening.price)
         }
 
         @Test
@@ -698,6 +982,46 @@ class OpeningServiceTest {
     @DisplayName("updateOpeningStatus")
     inner class UpdateOpeningStatusTests {
 
+
+        @Test
+        @DisplayName("Re-scheduling a cancelled opening re-activates its cancelled intervals")
+        fun `schedule opening reactivates cancelled intervals`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host, status = OpeningStatus.CANCELLED)
+            val interval = createDummyInterval(
+                opening = opening,
+                start = opening.openingStart,
+                end = opening.openingStart.plusMinutes(60),
+                status = IntervalStatus.CANCELLED
+            )
+            opening.intervals.add(interval)
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+            every { openingEntityRepository.saveAndFlush(any()) } answers { firstArg() }
+
+            service.updateOpeningStatus("hostAuthSub", UpdateOpeningStatusRequest(status = OpeningStatus.SCHEDULED), dummyOpeningId)
+
+            assertEquals(OpeningStatus.SCHEDULED, opening.status)
+            verify(exactly = 1) { interval.status = IntervalStatus.ACTIVE }
+        }
+
+        @Test
+        @DisplayName("Invalid target status (DELETED) throws OpeningException")
+        fun `update opening status to deleted is rejected`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host)
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+
+            assertThrows<OpeningException> {
+                service.updateOpeningStatus("hostAuthSub", UpdateOpeningStatusRequest(status = OpeningStatus.DELETED), dummyOpeningId)
+            }
+            verify(exactly = 0) { openingEntityRepository.saveAndFlush(any()) }
+        }
+
+
         @Test
         @DisplayName("Cancel opening cancels all active intervals and bookings")
         fun `cancel opening cancels intervals`() {
@@ -752,6 +1076,63 @@ class OpeningServiceTest {
     inner class UpdateIntervalTests {
 
         private val intervalId = UUID.randomUUID()
+
+
+        @Test
+        @DisplayName("Interval not found, expected IntervalNotFoundException")
+        fun `update non existing interval`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host)
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+
+            val request = UpdateIntervalRequest(
+                intervalStart = opening.openingStart,
+                intervalEnd = opening.openingStart.plusMinutes(60),
+                participantLimit = 8
+            )
+
+            assertThrows<IntervalNotFoundException> {
+                service.updateInterval("hostAuthSub", request, dummyOpeningId, intervalId)
+            }
+        }
+
+        @Test
+        @DisplayName("New participant limit equal to booked seats is allowed (boundary)")
+        fun `new participant limit equal to booked seats`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host)
+
+            val activeBooking = mockk<OpeningBookingEntity>(relaxed = true) {
+                every { status } returns BookingStatus.ACTIVE
+                every { seatCount } returns 5
+            }
+            val interval = createDummyInterval(
+                opening = opening,
+                publicId = intervalId,
+                start = opening.openingStart,
+                end = opening.openingStart.plusMinutes(60),
+                limit = 8,
+                bookings = mutableListOf(activeBooking)
+            )
+            opening.intervals.add(interval)
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+            every { openingEntityRepository.saveAndFlush(any()) } answers { firstArg() }
+
+            val request = UpdateIntervalRequest(
+                intervalStart = opening.openingStart,
+                intervalEnd = opening.openingStart.plusMinutes(60),
+                participantLimit = 5 // pontosan annyi, mint a foglalt helyek
+            )
+
+            service.updateInterval("hostAuthSub", request, dummyOpeningId, intervalId)
+
+            verify(exactly = 1) { interval.participantLimit = 5 }
+        }
+
 
         @Test
         @DisplayName("Modify completed opening")
@@ -931,6 +1312,92 @@ class OpeningServiceTest {
             verify(exactly = 1) { interval.status = IntervalStatus.DELETED }
             verify(exactly = 1) { openingEntityRepository.saveAndFlush(opening) }
         }
+
+
+        @Test
+        @DisplayName("Re-activating a cancelled interval")
+        fun `cancelled interval can be reactivated`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host)
+            val interval = createDummyInterval(
+                opening = opening,
+                publicId = intervalId,
+                start = opening.openingStart,
+                end = opening.openingStart.plusMinutes(60),
+                status = IntervalStatus.CANCELLED
+            )
+            opening.intervals.add(interval)
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+            every { openingEntityRepository.saveAndFlush(any<OpeningEntity>()) } answers { firstArg() }
+
+            service.updateIntervalStatus("hostAuthSub", UpdateIntervalStatusRequest(status = IntervalStatus.ACTIVE), dummyOpeningId, intervalId)
+
+            verify(exactly = 1) { interval.status = IntervalStatus.ACTIVE }
+        }
+
+        @Test
+        @DisplayName("Activating an interval that is not cancelled, expected IntervalNotFoundException")
+        fun `activate interval that is not cancelled`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host)
+            opening.intervals.add(
+                createDummyInterval(
+                    opening = opening,
+                    publicId = intervalId,
+                    start = opening.openingStart,
+                    end = opening.openingStart.plusMinutes(60),
+                    status = IntervalStatus.ACTIVE
+                )
+            )
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+
+            assertThrows<IntervalNotFoundException> {
+                service.updateIntervalStatus("hostAuthSub", UpdateIntervalStatusRequest(status = IntervalStatus.ACTIVE), dummyOpeningId, intervalId)
+            }
+        }
+
+        @Test
+        @DisplayName("Delete non existing interval, expected IntervalNotFoundException")
+        fun `delete non existing interval`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host)
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+
+            assertThrows<IntervalNotFoundException> {
+                service.deleteInterval("hostAuthSub", dummyOpeningId, intervalId)
+            }
+        }
+
+        @Test
+        @DisplayName("Deleting an already DELETED interval is idempotent (no save)")
+        fun `delete already deleted interval is idempotent`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host)
+            opening.intervals.add(
+                createDummyInterval(
+                    opening = opening,
+                    publicId = intervalId,
+                    start = opening.openingStart,
+                    end = opening.openingStart.plusMinutes(60),
+                    status = IntervalStatus.DELETED
+                )
+            )
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+
+            val response = service.deleteInterval("hostAuthSub", dummyOpeningId, intervalId)
+
+            assertNotNull(response)
+            verify(exactly = 0) { openingEntityRepository.saveAndFlush(any<OpeningEntity>()) }
+        }
+
     }
 
 }
