@@ -1,5 +1,6 @@
 package hu.kirdev.szaunaweb.opening
 
+import hu.kirdev.szaunaweb.config.AuthSubPrincipal
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -41,7 +42,7 @@ class OpeningControllerTest {
     fun setup() {
         val principalResolver = object : HandlerMethodArgumentResolver {
             override fun supportsParameter(parameter: MethodParameter): Boolean {
-                return parameter.hasParameterAnnotation(AuthenticationPrincipal::class.java)
+                return parameter.hasParameterAnnotation(AuthSubPrincipal::class.java)
             }
             override fun resolveArgument(
                 parameter: MethodParameter,
@@ -77,8 +78,6 @@ class OpeningControllerTest {
     @DisplayName("2. GET /api/v1/opening")
     inner class FindOpeningsTests {
 
-        // PageImpl-t adunk vissza relaxed mock helyett, mert a Jackson egy mockolt
-        // Page-et megbízhatatlanul szerializál.
         @Test
         fun `find openings returns 200 with page body`() {
             every { openingService.getOpenings(authSub, any(), any(), any(), any()) } returns
@@ -363,9 +362,6 @@ class OpeningControllerTest {
             verify(exactly = 0) { openingService.createOpening(any(), any()) }
         }
 
-        // Ez akkor ad 400-at, ha a DTO mezői non-null Kotlin típusúak (a Jackson Kotlin
-        // modul hiányzó paramétert dob) vagy van rajtuk @NotNull. Ha a DTO-d mezői nullable-ök
-        // és nincs Bean Validation annotáció, ezt a tesztet a DTO-hoz igazítsd.
         @Test
         fun `create opening with empty body returns 400`() {
             mockMvc.perform(

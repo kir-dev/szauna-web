@@ -81,7 +81,7 @@ class OpeningIntervalEntity(
     )
 
     fun overlapsWith(start: LocalDateTime, end: LocalDateTime): Boolean {
-        return start.isBefore(this.intervalEnd) || end.isAfter(this.intervalStart)
+        return start.isBefore(this.intervalEnd) && end.isAfter(this.intervalStart)
     }
 
 }

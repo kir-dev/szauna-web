@@ -29,7 +29,6 @@ interface OpeningEntityRepository : JpaRepository<OpeningEntity, Long> {
             "hostedBy",
             "openingType",
             "intervals",
-            "intervals.bookings"
         ]
     )
     @Query(
@@ -52,7 +51,6 @@ interface OpeningEntityRepository : JpaRepository<OpeningEntity, Long> {
             "hostedBy",
             "openingType",
             "intervals",
-            "intervals.bookings"
         ]
     )
     fun findByPublicId(publicId: UUID): OpeningEntity?
@@ -62,7 +60,6 @@ interface OpeningEntityRepository : JpaRepository<OpeningEntity, Long> {
             "hostedBy",
             "openingType",
             "intervals",
-            "intervals.bookings"
         ]
     )
     @Query(

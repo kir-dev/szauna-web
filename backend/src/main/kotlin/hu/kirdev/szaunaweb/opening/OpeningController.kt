@@ -1,5 +1,6 @@
 package hu.kirdev.szaunaweb.opening
 
+import hu.kirdev.szaunaweb.config.AuthSubPrincipal
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Content
@@ -16,7 +17,6 @@ import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
 import org.springframework.security.access.prepost.PreAuthorize
-import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
 import java.time.LocalDateTime
 import java.util.*
@@ -54,7 +54,7 @@ class OpeningController(
     @GetMapping("/{publicId}")
     fun findByPublicId(
         @Parameter(hidden = true)
-        @AuthenticationPrincipal
+        @AuthSubPrincipal
         authSub: String?,
 
         @Parameter(description = "Opening public id")
@@ -79,7 +79,7 @@ class OpeningController(
     )
     @GetMapping
     fun findOpenings(
-        @AuthenticationPrincipal
+        @AuthSubPrincipal
         @Parameter(hidden = true)
         authSub: String?,
 
@@ -165,7 +165,7 @@ class OpeningController(
     @PostMapping
     fun createOpening(
         @Parameter(hidden = true)
-        @AuthenticationPrincipal
+        @AuthSubPrincipal
         authSub: String,
         @Valid
         @RequestBody
@@ -217,7 +217,7 @@ class OpeningController(
     @PostMapping("/{openingId}/interval")
     fun createInterval(
         @Parameter(hidden = true)
-        @AuthenticationPrincipal
+        @AuthSubPrincipal
         authSub: String,
 
         @Parameter(description = "Opening public id", required = true)
@@ -273,7 +273,7 @@ class OpeningController(
     @PutMapping("/{openingId}")
     fun updateOpening(
         @Parameter(hidden = true)
-        @AuthenticationPrincipal
+        @AuthSubPrincipal
         authSub: String,
 
         @Parameter(description = "Opening public id", required = true)
@@ -330,7 +330,7 @@ class OpeningController(
     @PutMapping("/{openingId}/interval/{intervalId}")
     fun updateInterval(
         @Parameter(hidden = true)
-        @AuthenticationPrincipal
+        @AuthSubPrincipal
         authSub: String,
 
         @Parameter(description = "Opening public id", required = true)
@@ -385,7 +385,7 @@ class OpeningController(
     @PatchMapping("/{openingId}")
     fun updateOpeningStatus(
         @Parameter(hidden = true)
-        @AuthenticationPrincipal
+        @AuthSubPrincipal
         authSub: String,
 
         @Parameter(description = "Opening public id", required = true)
@@ -435,7 +435,7 @@ class OpeningController(
     @PatchMapping("/{openingId}/interval/{intervalId}")
     fun updateIntervalStatus(
         @Parameter(hidden = true)
-        @AuthenticationPrincipal
+        @AuthSubPrincipal
         authSub: String,
 
         @Parameter(description = "Opening public id", required = true)
@@ -491,7 +491,7 @@ class OpeningController(
     @DeleteMapping("/{openingId}")
     fun deleteOpeningByPublicId(
         @Parameter(hidden = true)
-        @AuthenticationPrincipal
+        @AuthSubPrincipal
         authSub: String,
 
         @Parameter(description = "Opening public id", required = true)
@@ -538,7 +538,7 @@ class OpeningController(
     @DeleteMapping("/{openingId}/interval/{intervalId}")
     fun deleteInterval(
         @Parameter(hidden = true)
-        @AuthenticationPrincipal
+        @AuthSubPrincipal
         authSub: String,
 
         @Parameter(description = "Opening public id", required = true)
