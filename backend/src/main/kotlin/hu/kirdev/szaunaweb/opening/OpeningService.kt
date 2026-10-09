@@ -118,7 +118,7 @@ class OpeningService(
         val intervals = opening.intervals
 
         val hasOverlap = intervals.any { other ->
-            other.overlapsWith(dto.intervalStart, dto.intervalEnd)
+            other.status == IntervalStatus.ACTIVE && other.overlapsWith(dto.intervalStart, dto.intervalEnd)
         }
 
         if (hasOverlap) {
@@ -209,7 +209,12 @@ class OpeningService(
     }
 
     @Transactional
-    fun updateInterval(authSub: String, dto: UpdateIntervalRequest, openingId: UUID, intervalId: UUID): OpeningResponse {
+    fun updateInterval(
+        authSub: String,
+        dto: UpdateIntervalRequest,
+        openingId: UUID,
+        intervalId: UUID
+    ): OpeningResponse {
         val opening = findOpening(openingId)
 
         val user = userService.findByAuthSub(authSub)
@@ -441,7 +446,7 @@ class OpeningService(
         endTime: LocalDateTime,
         opening: OpeningEntity
     ): MutableList<OpeningIntervalEntity> {
-        if (endTime.isAfter(startTime)) {
+        if (!endTime.isAfter(startTime)) {
             throw InvalidTimeRangeException("End time must be after the start and end time")
         }
 
@@ -449,7 +454,7 @@ class OpeningService(
 
         val slotMinutes = totalMinutes / DEFAULT_INTERVAL_NUMBERS
 
-        if (totalMinutes % DEFAULT_INTERVAL_NUMBERS == 0L) {
+        if (totalMinutes % DEFAULT_INTERVAL_NUMBERS != 0L) {
             throw OpeningException("Total duration ($totalMinutes) cannot be divided equally into $DEFAULT_INTERVAL_NUMBERS slots")
         }
 

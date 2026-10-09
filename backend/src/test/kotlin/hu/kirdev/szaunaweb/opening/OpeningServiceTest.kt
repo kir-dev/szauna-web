@@ -262,6 +262,35 @@ class OpeningServiceTest {
     }
 
     @Nested
+    @DisplayName("getCurrentOpening")
+    inner class GetCurrentOpeningTests {
+
+        @Test
+        @DisplayName("Returns the current or next opening")
+        fun `get current or next opening`() {
+            val host = createDummyUser()
+            val opening = createDummyOpening(host = host)
+            every { openingEntityRepository.findCurrentOrNextOpening(any()) } returns opening
+
+            val response = service.getCurrentOpening()
+
+            assertNotNull(response)
+            assertEquals(dummyOpeningId, response?.publicId)
+            verify(exactly = 1) { openingEntityRepository.findCurrentOrNextOpening(any()) }
+        }
+
+        @Test
+        @DisplayName("Returns null if no opening is found")
+        fun `no current opening found`() {
+            every { openingEntityRepository.findCurrentOrNextOpening(any()) } returns null
+
+            val response = service.getCurrentOpening()
+
+            assertNull(response)
+        }
+    }
+
+    @Nested
     @DisplayName("createOpening")
     inner class CreateOpeningTest {
 
@@ -379,6 +408,47 @@ class OpeningServiceTest {
 
             assertNotNull(response)
             assertEquals(dummyOpeningId, response.publicId)
+            verify(exactly = 1) { openingEntityRepository.saveAndFlush(any()) }
+        }
+
+        @Test
+        @DisplayName("Successful creation (generateDefaultIntervals = true)")
+        fun `create successfully with default intervals`() {
+            val start = LocalDateTime.now().plusDays(2)
+            val end = start.plusMinutes(180)
+            val dto = CreateOpeningRequest(
+                openingStart = start,
+                openingEnd = end,
+                openingTypeId = 1L,
+                generateDefaultIntervals = true
+            )
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val openingType = createDummyOpeningType(active = true)
+
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+            every {
+                openingEntityRepository.existsByStatusNotInAndOpeningStartLessThanAndOpeningEndGreaterThan(
+                    any(),
+                    any(),
+                    any()
+                )
+            } returns false
+            every { openingTypeEntityRepository.findById(1L) } returns Optional.of(openingType)
+            every { openingEntityRepository.saveAndFlush(any()) } answers {
+                val entity = firstArg<OpeningEntity>()
+                entity.publicId = dummyOpeningId
+                entity.intervals.forEach { interval ->
+                    if (interval.publicId == null) {
+                        interval.publicId = UUID.randomUUID()
+                    }
+                }
+                entity
+            }
+
+            val response = service.createOpening("hostAuthSub", dto)
+
+            assertNotNull(response)
+            assertEquals(3, response.intervals.size)
             verify(exactly = 1) { openingEntityRepository.saveAndFlush(any()) }
         }
 
@@ -531,6 +601,148 @@ class OpeningServiceTest {
 
             assertNotNull(response)
             assertEquals(1, opening.intervals.size)
+            verify(exactly = 1) { openingEntityRepository.saveAndFlush(opening) }
+        }
+    }
+
+    @Nested
+    @DisplayName("updateOpening")
+    inner class UpdateOpeningTests {
+
+        @Test
+        @DisplayName("Not host or admin tries to update, throws OpeningPermissionException")
+        fun `unauthorized update throws exception`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val intruder = createDummyUser(authSub = "intruderAuthSub")
+            val opening = createDummyOpening(host = host)
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("intruderAuthSub") } returns intruder
+
+            every {
+                openingEntityRepository.existsByPublicIdNotAndStatusNotInAndOpeningStartLessThanAndOpeningEndGreaterThan(
+                    any(), any(), any(), any()
+                )
+            } returns false
+
+            val request = UpdateOpeningRequest(
+                openingStart = LocalDateTime.now().plusDays(2),
+                openingEnd = LocalDateTime.now().plusDays(2).plusHours(2),
+                openingTypeId = 1L,
+                price = null
+            )
+
+            assertThrows<OpeningPermissionException> {
+                service.updateOpening("intruderAuthSub", request, dummyOpeningId)
+            }
+        }
+
+        @Test
+        @DisplayName("Update completed opening throws OpeningException")
+        fun `update completed opening throws exception`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host, status = OpeningStatus.COMPLETED)
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+
+            val request = UpdateOpeningRequest(
+                openingStart = LocalDateTime.now().plusDays(2),
+                openingEnd = LocalDateTime.now().plusDays(2).plusHours(2),
+                openingTypeId = 1L,
+                price = null
+            )
+
+            assertThrows<OpeningException> {
+                service.updateOpening("hostAuthSub", request, dummyOpeningId)
+            }
+        }
+
+        @Test
+        @DisplayName("Successfully update opening details")
+        fun `successful update opening`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host)
+            val newType = createDummyOpeningType(active = true)
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+            every {
+                openingEntityRepository.existsByPublicIdNotAndStatusNotInAndOpeningStartLessThanAndOpeningEndGreaterThan(
+                    any(),
+                    any(),
+                    any(),
+                    any()
+                )
+            } returns false
+            every { openingTypeEntityRepository.findById(2L) } returns Optional.of(newType)
+            every { openingEntityRepository.saveAndFlush(any()) } answers { firstArg() }
+
+            val request = UpdateOpeningRequest(
+                openingStart = LocalDateTime.now().plusDays(3),
+                openingEnd = LocalDateTime.now().plusDays(3).plusHours(4),
+                openingTypeId = 2L,
+                price = 3000
+            )
+
+            val response = service.updateOpening("hostAuthSub", request, dummyOpeningId)
+
+            assertNotNull(response)
+            assertEquals(3000, opening.price)
+            assertEquals(newType, opening.openingType)
+            verify(exactly = 1) { openingEntityRepository.saveAndFlush(opening) }
+        }
+    }
+
+    @Nested
+    @DisplayName("updateOpeningStatus")
+    inner class UpdateOpeningStatusTests {
+
+        @Test
+        @DisplayName("Cancel opening cancels all active intervals and bookings")
+        fun `cancel opening cancels intervals`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host)
+            val booking = mockk<OpeningBookingEntity>(relaxed = true) {
+                every { status } returns BookingStatus.ACTIVE
+            }
+            val interval = createDummyInterval(
+                opening = opening,
+                start = opening.openingStart,
+                end = opening.openingStart.plusMinutes(60),
+                status = IntervalStatus.ACTIVE,
+                bookings = mutableListOf(booking)
+            )
+            opening.intervals.add(interval)
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+            every { openingEntityRepository.saveAndFlush(any()) } answers { firstArg() }
+
+            val request = UpdateOpeningStatusRequest(status = OpeningStatus.CANCELLED)
+
+            service.updateOpeningStatus("hostAuthSub", request, dummyOpeningId)
+
+            assertEquals(OpeningStatus.CANCELLED, opening.status)
+            verify(exactly = 1) { interval.status = IntervalStatus.CANCELLED }
+            verify(exactly = 1) { booking.status = BookingStatus.CANCELLED }
+        }
+
+        @Test
+        @DisplayName("Complete opening updates status correctly")
+        fun `complete opening`() {
+            val host = createDummyUser(authSub = "hostAuthSub")
+            val opening = createDummyOpening(host = host)
+
+            every { openingEntityRepository.findByPublicId(dummyOpeningId) } returns opening
+            every { userService.findByAuthSub("hostAuthSub") } returns host
+            every { openingEntityRepository.saveAndFlush(any()) } answers { firstArg() }
+
+            val request = UpdateOpeningStatusRequest(status = OpeningStatus.COMPLETED)
+
+            service.updateOpeningStatus("hostAuthSub", request, dummyOpeningId)
+
+            assertEquals(OpeningStatus.COMPLETED, opening.status)
             verify(exactly = 1) { openingEntityRepository.saveAndFlush(opening) }
         }
     }
