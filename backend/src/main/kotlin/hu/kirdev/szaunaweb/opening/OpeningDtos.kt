@@ -1,0 +1,96 @@
+package hu.kirdev.szaunaweb.opening
+
+import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotNull
+import java.time.LocalDateTime
+import java.util.*
+
+data class CreateOpeningRequest(
+    @field:NotNull
+    val openingStart: LocalDateTime,
+    @field:NotNull
+    val openingEnd: LocalDateTime,
+    val isPrivate: Boolean = false,
+    val price: Int? = null,
+    @field:NotNull
+    val openingTypeId: Long,
+    val generateDefaultIntervals: Boolean = true,
+)
+
+data class UpdateOpeningRequest(
+    @field:NotNull
+    val openingStart: LocalDateTime,
+    @field:NotNull
+    val openingEnd: LocalDateTime,
+    val price: Int? = null,
+    @field:NotNull
+    val openingTypeId: Long,
+)
+
+data class UpdateIntervalRequest(
+    @field:NotNull
+    val intervalStart: LocalDateTime,
+    @field:NotNull
+    val intervalEnd: LocalDateTime,
+    val participantLimit: Int,
+)
+
+data class UpdateOpeningStatusRequest(
+    val status: OpeningStatus,
+)
+
+data class UpdateIntervalStatusRequest(
+    val status: IntervalStatus,
+)
+
+data class CreateIntervalRequest(
+    @field:NotNull
+    val intervalStart: LocalDateTime,
+    @field:NotNull
+    val intervalEnd: LocalDateTime,
+    @field:NotNull
+    val participantLimit: Int,
+)
+
+data class OpeningResponse(
+    val publicId: UUID,
+    val openingStart: LocalDateTime,
+    val openingEnd: LocalDateTime,
+    val isPrivate: Boolean,
+    val price: Int,
+    val hostedByName: String,
+    val typeName: String,
+    val status: OpeningStatus,
+    val intervals: MutableList<IntervalResponse>
+) {
+    constructor(opening: OpeningEntity) : this(
+        publicId = opening.publicId!!,
+        openingStart = opening.openingStart,
+        openingEnd = opening.openingEnd,
+        isPrivate = opening.isPrivate,
+        price = opening.price,
+        hostedByName = opening.hostedBy.displayName,
+        typeName = opening.openingType.name,
+        status = opening.status,
+        intervals = opening.intervals.map { IntervalResponse(it) }.toMutableList()
+    )
+}
+
+data class IntervalResponse(
+    val publicId: UUID,
+    val intervalStart: LocalDateTime,
+    val intervalEnd: LocalDateTime,
+    val participantLimit: Int,
+    val availableSeats: Int,
+    val status: IntervalStatus,
+) {
+    constructor(interval: OpeningIntervalEntity) : this(
+        publicId = interval.publicId!!,
+        intervalStart = interval.intervalStart,
+        intervalEnd = interval.intervalEnd,
+        participantLimit = interval.participantLimit,
+        status = interval.status,
+        availableSeats = interval.participantLimit - interval.bookings.filter { it.status == BookingStatus.ACTIVE }
+            .sumOf { it.seatCount }
+    )
+}
