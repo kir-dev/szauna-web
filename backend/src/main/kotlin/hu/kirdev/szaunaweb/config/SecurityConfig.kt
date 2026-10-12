@@ -39,7 +39,7 @@ class SecurityConfig(
         configuration.allowCredentials = true
         configuration.allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
         configuration.allowedOriginPatterns = listOf(
-            "http://localhost:3000", //TODO:: Add frontend url
+            "http://localhost:5173",
         )
         configuration.allowedHeaders = listOf("*")
         val source = UrlBasedCorsConfigurationSource()

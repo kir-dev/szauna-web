@@ -90,7 +90,7 @@ class AuthSchSuccessHandler(
 
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString())
 
-        redirectStrategy.sendRedirect(request, response, "$frontendUrl/api/test/me")
+        redirectStrategy.sendRedirect(request, response, frontendUrl)
     }
 
 
