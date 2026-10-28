@@ -31,8 +31,11 @@ class JwtService(
 
         val claims = mapOf(
             "email" to user.email,
-            "name" to user.displayName,
+            "displayName" to user.displayName,
             "role" to user.role.name,
+            "banned" to user.isBanned,
+            "banReason" to (user.banReason?:"Nincs megadva!"),
+            "publicId" to user.publicId,
         )
 
         return Jwts.builder()
