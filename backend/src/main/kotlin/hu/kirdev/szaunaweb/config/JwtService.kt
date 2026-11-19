@@ -16,7 +16,7 @@ class JwtService(
     @Value("\${szaunaWeb.jwt.secret}")
     private val secret: String,
 
-    @Value("\${szaunaWeb.jwt.experation}")
+    @Value("\${szaunaWeb.jwt.expiration}")
     private val expiration: Long,
 
     @Value("\${szaunaWeb.jwt.issuer}")
@@ -31,8 +31,11 @@ class JwtService(
 
         val claims = mapOf(
             "email" to user.email,
-            "name" to user.displayName,
+            "displayName" to user.displayName,
             "role" to user.role.name,
+            "banned" to user.isBanned,
+            "banReason" to (user.banReason?:"Nincs megadva!"),
+            "publicId" to user.publicId,
         )
 
         return Jwts.builder()

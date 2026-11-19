@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
 import java.time.LocalDateTime
 import java.util.*
+import java.time.temporal.ChronoUnit
 
 @Service
 class OpeningService(
@@ -47,7 +48,11 @@ class OpeningService(
             }
 
         }
-        return OpeningResponse(opening)
+        return OpeningResponse(opening).let { response ->
+            response.copy(
+                intervals = response.intervals.filter { it.status != IntervalStatus.DELETED } as MutableList<IntervalResponse>
+            )
+        }
     }
 
     @Transactional(readOnly = true)
@@ -65,7 +70,13 @@ class OpeningService(
 
         val openings = openingRepository.findOpeningWithFilter(status, from, to, pageable, hasAccessToAll)
 
-        return openings.map { OpeningResponse(it) }
+        return openings.map { opening ->
+            OpeningResponse(opening).let { response ->
+                response.copy(
+                    intervals = response.intervals.filter { it.status != IntervalStatus.DELETED } as MutableList<IntervalResponse>
+                )
+            }
+        }
     }
 
 
@@ -77,13 +88,13 @@ class OpeningService(
 
     @Transactional
     fun createOpening(authSub: String, dto: CreateOpeningRequest): OpeningResponse {
-        if (dto.openingStart >= dto.openingEnd) throw InvalidTimeRangeException("Opening start must be greater than end!")
-        if (dto.openingStart.isBefore(LocalDateTime.now())) throw InvalidTimeRangeException("Cannot create an opening in the past!")
+        if (dto.openingStart.truncatedTo(ChronoUnit.MINUTES) >= dto.openingEnd.truncatedTo(ChronoUnit.MINUTES)) throw InvalidTimeRangeException("Opening start must be greater than end!")
+        if (dto.openingStart.truncatedTo(ChronoUnit.MINUTES).isBefore(LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES))) throw InvalidTimeRangeException("Cannot create an opening in the past!")
         val user = userService.findByAuthSub(authSub)
         val hasOverlap = openingRepository.existsByStatusNotInAndOpeningStartLessThanAndOpeningEndGreaterThan(
             statuses = IGNORED_STATUSES_FOR_OVERLAP,
-            end = dto.openingEnd,
-            start = dto.openingStart
+            end = dto.openingEnd.truncatedTo(ChronoUnit.MINUTES),
+            start = dto.openingStart.truncatedTo(ChronoUnit.MINUTES)
         )
 
         if (hasOverlap) {
@@ -97,7 +108,7 @@ class OpeningService(
         val opening = OpeningEntity(user, dto, openingType)
 
         if (dto.generateDefaultIntervals) {
-            opening.intervals = generateDefaultIntervals(dto.openingStart, dto.openingEnd, opening)
+            opening.intervals = generateDefaultIntervals(dto.openingStart.truncatedTo(ChronoUnit.MINUTES), dto.openingEnd.truncatedTo(ChronoUnit.MINUTES), opening)
         }
 
         val saved = openingRepository.saveAndFlush(opening)
@@ -111,14 +122,14 @@ class OpeningService(
         val user = userService.findByAuthSub(authSub)
         checkOpeningPermission(user, opening)
 
-        if (opening.openingStart.isAfter(dto.intervalStart) || opening.openingEnd.isBefore(dto.intervalEnd)) {
+        if (opening.openingStart.truncatedTo(ChronoUnit.MINUTES).isAfter(dto.intervalStart.truncatedTo(ChronoUnit.MINUTES)) || opening.openingEnd.truncatedTo(ChronoUnit.MINUTES).isBefore(dto.intervalEnd.truncatedTo(ChronoUnit.MINUTES))) {
             throw InvalidTimeRangeException("The interval does not fit into the opening time range!")
         }
 
         val intervals = opening.intervals
 
         val hasOverlap = intervals.any { other ->
-            other.status == IntervalStatus.ACTIVE && other.overlapsWith(dto.intervalStart, dto.intervalEnd)
+            other.status == IntervalStatus.ACTIVE && other.overlapsWith(dto.intervalStart.truncatedTo(ChronoUnit.MINUTES), dto.intervalEnd.truncatedTo(ChronoUnit.MINUTES))
         }
 
         if (hasOverlap) {
@@ -126,8 +137,8 @@ class OpeningService(
         }
 
         val newInterval = OpeningIntervalEntity(
-            dto.intervalStart,
-            dto.intervalEnd,
+            dto.intervalStart.truncatedTo(ChronoUnit.MINUTES),
+            dto.intervalEnd.truncatedTo(ChronoUnit.MINUTES),
             opening,
             dto.participantLimit
         )
@@ -136,14 +147,18 @@ class OpeningService(
 
         val saved = openingRepository.saveAndFlush(opening)
 
-        return OpeningResponse(saved)
+        return OpeningResponse(saved).let { response ->
+            response.copy(
+                intervals = response.intervals.filter { it.status != IntervalStatus.DELETED } as MutableList<IntervalResponse>
+            )
+        }
     }
 
     @Transactional
     fun updateOpening(authSub: String, dto: UpdateOpeningRequest, openingId: UUID): OpeningResponse {
-        if (!dto.openingStart.isBefore(dto.openingEnd)) throw InvalidTimeRangeException("Opening start must be before end!")
+        if (!dto.openingStart.truncatedTo(ChronoUnit.MINUTES).isBefore(dto.openingEnd.truncatedTo(ChronoUnit.MINUTES))) throw InvalidTimeRangeException("Opening start must be before end!")
 
-        if (dto.openingStart.isBefore(LocalDateTime.now())) throw InvalidTimeRangeException("Cannot create an opening in the past!")
+        if (dto.openingStart.truncatedTo(ChronoUnit.MINUTES).isBefore(LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES))) throw InvalidTimeRangeException("Cannot create an opening in the past!")
 
         val opening = findOpening(openingId)
 
@@ -153,13 +168,13 @@ class OpeningService(
             throw OpeningException("After the opening marked as completed, you are unable to modify it!")
         }
 
-        if (opening.openingStart != dto.openingStart || opening.openingEnd != dto.openingEnd) {
+        if (opening.openingStart.truncatedTo(ChronoUnit.MINUTES) != dto.openingStart.truncatedTo(ChronoUnit.MINUTES) || opening.openingEnd.truncatedTo(ChronoUnit.MINUTES) != dto.openingEnd.truncatedTo(ChronoUnit.MINUTES)) {
             val hasOverlap =
                 openingRepository.existsByPublicIdNotAndStatusNotInAndOpeningStartLessThanAndOpeningEndGreaterThan(
                     openingId,
                     IGNORED_STATUSES_FOR_OVERLAP,
-                    dto.openingEnd,
-                    dto.openingStart,
+                    dto.openingEnd.truncatedTo(ChronoUnit.MINUTES),
+                    dto.openingStart.truncatedTo(ChronoUnit.MINUTES),
                 )
 
             if (hasOverlap) {
@@ -175,20 +190,20 @@ class OpeningService(
             opening.intervals.filter { it.status == IntervalStatus.ACTIVE }
 
         if (activeIntervals.isNotEmpty()) {
-            val earliestIntervalStart = activeIntervals.minOf { it.intervalStart }
-            val latestIntervalEnd = activeIntervals.maxOf { it.intervalEnd }
+            val earliestIntervalStart = activeIntervals.minOf { it.intervalStart.truncatedTo(ChronoUnit.MINUTES) }
+            val latestIntervalEnd = activeIntervals.maxOf { it.intervalEnd.truncatedTo(ChronoUnit.MINUTES) }
 
-            if (dto.openingStart.isAfter(earliestIntervalStart)) {
+            if (dto.openingStart.truncatedTo(ChronoUnit.MINUTES).isAfter(earliestIntervalStart.truncatedTo(ChronoUnit.MINUTES))) {
                 throw TimeRangeConflictException("Cannot delay opening start: the first active interval begins at $earliestIntervalStart.")
             }
 
-            if (dto.openingEnd.isBefore(latestIntervalEnd)) {
+            if (dto.openingEnd.truncatedTo(ChronoUnit.MINUTES).isBefore(latestIntervalEnd.truncatedTo(ChronoUnit.MINUTES))) {
                 throw TimeRangeConflictException("Cannot shorten opening end: the last active interval ends at $latestIntervalEnd.")
             }
         }
 
-        opening.openingStart = dto.openingStart
-        opening.openingEnd = dto.openingEnd
+        opening.openingStart = dto.openingStart.truncatedTo(ChronoUnit.MINUTES)
+        opening.openingEnd = dto.openingEnd.truncatedTo(ChronoUnit.MINUTES)
 
         val priceChanged = opening.price != dto.price
 
@@ -205,7 +220,11 @@ class OpeningService(
 
         val saved = openingRepository.saveAndFlush(opening)
 
-        return OpeningResponse(saved)
+        return OpeningResponse(saved).let { response ->
+            response.copy(
+                intervals = response.intervals.filter { it.status != IntervalStatus.DELETED } as MutableList<IntervalResponse>
+            )
+        }
     }
 
     @Transactional
@@ -247,33 +266,36 @@ class OpeningService(
             interval.participantLimit = dto.participantLimit
         }
 
-        if (!dto.intervalStart.isBefore(dto.intervalEnd)) {
+        if (!dto.intervalStart.truncatedTo(ChronoUnit.MINUTES).isBefore(dto.intervalEnd.truncatedTo(ChronoUnit.MINUTES))) {
             throw InvalidTimeRangeException("Interval start must be before interval end!")
         }
 
-        val openingRange = opening.openingStart..opening.openingEnd
+        val openingRange = opening.openingStart.truncatedTo(ChronoUnit.MINUTES)..opening.openingEnd.truncatedTo(ChronoUnit.MINUTES)
 
-        if (dto.intervalStart !in openingRange || dto.intervalEnd !in openingRange) {
+        if (dto.intervalStart.truncatedTo(ChronoUnit.MINUTES) !in openingRange || dto.intervalEnd.truncatedTo(ChronoUnit.MINUTES) !in openingRange) {
             throw InvalidTimeRangeException(
                 "Interval (${dto.intervalStart} - ${dto.intervalEnd}) must be within opening hours (${opening.openingStart} - ${opening.openingEnd})!"
             )
         }
 
         val hasOverlap = intervals.any { other ->
-            other.overlapsWith(dto.intervalStart, dto.intervalEnd)
+            other.overlapsWith(dto.intervalStart.truncatedTo(ChronoUnit.MINUTES), dto.intervalEnd.truncatedTo(ChronoUnit.MINUTES))
         }
 
         if (hasOverlap) {
             throw TimeRangeConflictException("The modified interval overlaps with an other active interval!")
         }
 
-        interval.intervalStart = dto.intervalStart
-        interval.intervalEnd = dto.intervalEnd
+        interval.intervalStart = dto.intervalStart.truncatedTo(ChronoUnit.MINUTES)
+        interval.intervalEnd = dto.intervalEnd.truncatedTo(ChronoUnit.MINUTES)
 
         val saved = openingRepository.saveAndFlush(opening)
 
-        return OpeningResponse(saved)
-
+        return OpeningResponse(saved).let { response ->
+            response.copy(
+                intervals = response.intervals.filter { it.status != IntervalStatus.DELETED } as MutableList<IntervalResponse>
+            )
+        }
     }
 
     @Transactional
@@ -373,7 +395,11 @@ class OpeningService(
 
         val saved = openingRepository.saveAndFlush(opening)
 
-        return OpeningResponse(saved)
+        return OpeningResponse(saved).let { response ->
+            response.copy(
+                intervals = response.intervals.filter { it.status != IntervalStatus.DELETED } as MutableList<IntervalResponse>
+            )
+        }
     }
 
     @Transactional
@@ -433,7 +459,11 @@ class OpeningService(
 
         val saved = openingRepository.saveAndFlush(opening)
 
-        return OpeningResponse(saved)
+        return OpeningResponse(saved).let { response ->
+            response.copy(
+                intervals = response.intervals.filter { it.status != IntervalStatus.DELETED } as MutableList<IntervalResponse>
+            )
+        }
     }
 
     private fun findOpeningType(id: Long): OpeningTypeEntity {

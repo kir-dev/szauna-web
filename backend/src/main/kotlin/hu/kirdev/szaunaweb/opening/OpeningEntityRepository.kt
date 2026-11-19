@@ -37,6 +37,7 @@ interface OpeningEntityRepository : JpaRepository<OpeningEntity, Long> {
         WHERE o.status != :cancelledStatus 
             AND o.isPrivate IS false 
             AND o.openingEnd > :now 
+            AND o.status = OpeningStatus.SCHEDULED
         ORDER BY o.openingStart ASC 
         LIMIT 1
     """

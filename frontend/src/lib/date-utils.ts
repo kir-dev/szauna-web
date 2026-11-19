@@ -19,3 +19,8 @@ export function formatTimeRange(startStr: string, endStr: string): string {
     })
     return `${start} – ${end}`
 }
+
+import {format} from "date-fns";
+
+export const toLocalDateTime = (date: Date) =>
+    format(date, "yyyy-MM-dd'T'HH:mm:ss");

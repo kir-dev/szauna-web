@@ -6,15 +6,15 @@ import {Link} from "react-router";
 import {Button} from "../../components/ui/button.tsx";
 import ThemeToggle from "../../components/ThemeToggle.tsx";
 import logoImg from "../../assets/big_logo.png"
+import {useUser} from "../../auth/useUser.ts";
 
-export default function IndexPage(){
-    const login = () => {
-        window.location.href = "http://localhost:8080/oauth2/authorization/authsch"
-    }
+export default function IndexPage() {
+    const {user, isLoggedIn, isLoading} = useUser();
 
     return (<>
             <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md">
-                <div className="container mx-auto max-w-11/12 md:max-w-3/4 gap-2 h-16 flex items-center justify-between">
+                <div
+                    className="container mx-auto max-w-11/12 md:max-w-3/4 gap-2 h-16 flex items-center justify-between">
                     <Link to="/" className="flex items-center gap-3">
                         <img
                             src={logoImg}
@@ -25,8 +25,32 @@ export default function IndexPage(){
 
 
                     <div className="flex items-center gap-3">
-                        <ThemeToggle/>
-                        <Button onClick={login} variant='default' className="cursor-pointer">Bejelentkezés</Button>
+                        <ThemeToggle />
+                        {(() => {
+                            if (isLoading) {
+                                return (
+                                    <Button disabled={true} variant="default" className="cursor-pointer">
+                                        Betöltés
+                                    </Button>
+                                );
+                            } else if (isLoggedIn) {
+                                return (
+                                    <Link to="/dashboard">
+                                        <Button variant="default" className="cursor-pointer">
+                                            {user?.displayName}
+                                        </Button>
+                                    </Link>
+                                );
+                            } else {
+                                return (
+                                    <Link to="/login">
+                                        <Button variant="default" className="cursor-pointer">
+                                            Bejelentkezés
+                                        </Button>
+                                    </Link>
+                                );
+                            }
+                        })()}
                     </div>
                 </div>
             </header>

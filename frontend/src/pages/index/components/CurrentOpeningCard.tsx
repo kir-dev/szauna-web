@@ -33,7 +33,7 @@ export function CurrentOpeningCard() {
         )
     }
 
-    if (error){
+    if (error) {
         return (
             <div
                 className="w-full max-w-11/12 md:max-w-3/4 mx-auto rounded-2xl border border-border/80 bg-card/60 backdrop-blur-md shadow-xl overflow-hidden">
@@ -87,51 +87,56 @@ export function CurrentOpeningCard() {
 
                 {
                     opening.intervals.map((interval) => {
-                        const isFull = interval.availableSeats == 0
-                        return (
-                            <div
-                                key={interval.publicId}
-                                className={`flex items-center justify-between p-3.5 rounded-xl border transition-all ${
-                                    isFull
-                                        ? "border-dashed border-border/60 bg-muted/20 opacity-60"
-                                        : "border-border/70 bg-card hover:border-primary/50 hover:bg-accent/5"
-                                }`}
-                            >
-                                <div className="space-y-1">
+                            const isFull = interval.availableSeats == 0
+                            if (interval.status == "ACTIVE") {
+
+                                return (
                                     <div
-                                        className={`text-base font-bold tracking-tight ${isFull ? "text-muted-foreground" : "text-foreground"}`}>
-                                        {formatTimeRange(interval.intervalStart, interval.intervalEnd)}
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                        <Users className="w-3.5 h-3.5"/>
-                                        {isFull ? (
-                                            <span className="text-destructive font-medium">Betelt</span>
-                                        ) : (
-                                            <span>
+                                        key={interval.publicId}
+                                        className={`flex items-center justify-between p-3.5 rounded-xl border transition-all ${
+                                            isFull
+                                                ? "border-dashed border-border/60 bg-muted/20 opacity-60"
+                                                : "border-border/70 bg-card hover:border-primary/50 hover:bg-accent/5"
+                                        }`}
+                                    >
+                                        <div className="space-y-1">
+                                            <div
+                                                className={`text-base font-bold tracking-tight ${isFull ? "text-muted-foreground" : "text-foreground"}`}>
+                                                {formatTimeRange(interval.intervalStart, interval.intervalEnd)}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                <Users className="w-3.5 h-3.5"/>
+                                                {isFull ? (
+                                                    <span className="text-destructive font-medium">Betelt</span>
+                                                ) : (
+                                                    <span>
                       <strong className="text-foreground font-semibold">{interval.availableSeats}</strong> szabad hely
                     </span>
-                                        )}
-                                        <span>•</span>
-                                        <span>{interval.participantLimit - interval.availableSeats} / {interval.participantLimit} fő</span>
-                                    </div>
-                                </div>
+                                                )}
+                                                <span>•</span>
+                                                <span>{interval.participantLimit - interval.availableSeats} / {interval.participantLimit} fő</span>
+                                            </div>
+                                        </div>
 
-                                {isFull ? (
-                                    <Button size="sm" disabled variant="ghost" className="text-xs">
-                                        Betelt
-                                    </Button>
-                                ) : (
-                                    <Button asChild size="sm"
-                                            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-sm">
-                                        <Link
-                                            to={`/booking?openingId=${opening.publicId}&intervalId=${interval.publicId}`}>
-                                            Foglalás <ChevronRight className="w-3.5 h-3.5 ml-1"/>
-                                        </Link>
-                                    </Button>
-                                )}
-                            </div>
-                        )
-                    })
+                                        {isFull ? (
+                                            <Button size="sm" disabled variant="ghost" className="text-xs">
+                                                Betelt
+                                            </Button>
+                                        ) : (
+                                            <Button asChild size="sm"
+                                                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-sm">
+                                                <Link
+                                                    to={`/booking?openingId=${opening.publicId}&intervalId=${interval.publicId}`}>
+                                                    Foglalás <ChevronRight className="w-3.5 h-3.5 ml-1"/>
+                                                </Link>
+                                            </Button>
+                                        )
+                                        }
+                                    </div>
+                                )
+                            }
+                        }
+                    )
                 }
             </div>
         </div>

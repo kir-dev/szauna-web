@@ -73,6 +73,14 @@ class GlobalExceptionHandler {
         return problemDetail
     }
 
+    @ExceptionHandler(JwtException::class)
+    fun handleJwtException(e: JwtException): ProblemDetail {
+        val problemDetail =
+            ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message ?: "Something went wrong")
+        problemDetail.title = "JWT_EXCEPTION"
+        return problemDetail
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun handleMethodArgumentNotValidException(e: MethodArgumentNotValidException): ProblemDetail {
         val problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation error")
