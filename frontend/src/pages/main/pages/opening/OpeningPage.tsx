@@ -52,6 +52,7 @@ import {DeleteIntervalDialog} from "./components/DeleteIntervalDialog.tsx";
 import EditOpeningDialog from "./components/EditOpeningDialog.tsx";
 import EditIntervalDialog from "./components/EditIntervalDialog.tsx";
 import CreateIntervalDialog from "./components/CreateIntervalDialog.tsx";
+import {useUser} from "../../../../auth/useUser.ts";
 
 export type UserRole = "USER" | "TRAINEE" | "SAUNA_MASTER" | "ADMIN";
 
@@ -63,11 +64,9 @@ const STATUS_FILTER_LABELS: Record<(typeof STATUS_FILTERS)[number], string> = {
     CANCELLED: "Lemondva",
 };
 
-// "yyyy-mm-dd" (date input) -> ISO, helyi idő szerint a nap elejére / végére
 const dayStartIso = (day: string) => `${day}T00:00:00`;
 const dayEndIso = (day: string) => `${day}T23:59:59`;
 
-// 0-tól indexelt oldalszámok, ellipszissel: [0, "…", 4, 5, 6, "…", 19]
 function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
     if (total <= 7) return Array.from({length: total}, (_, i) => i);
     const pages: (number | "ellipsis")[] = [0];
@@ -95,8 +94,8 @@ export default function OpeningManagerPage() {
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [pendingId, setPendingId] = useState<string | null>(null);
 
-    // TODO: a /v1/user/me válaszából kellene jönnie
-    const currentUserRole: UserRole = "ADMIN";
+    const {user} = useUser();
+    const currentUserRole: UserRole = user?.role ? user.role : "USER";
 
     const reload = () => setReloadKey((k) => k + 1);
 
@@ -134,10 +133,10 @@ export default function OpeningManagerPage() {
     // A legtöbb mutáció a frissített nyitást adja vissza -> helyben cseréljük
     const replaceOpening = (updated: OpeningResponse) =>
         setData((prev) =>
-            prev && {
-                ...prev,
-                content: prev.content.map((o) => (o.publicId === updated.publicId ? updated : o)),
-            }
+                prev && {
+                    ...prev,
+                    content: prev.content.map((o) => (o.publicId === updated.publicId ? updated : o)),
+                }
         );
 
     const runAction = async (id: string, action: () => Promise<void>, fallbackError: string) => {
@@ -308,7 +307,8 @@ export default function OpeningManagerPage() {
                                 key={opening.publicId}
                                 className="bg-white dark:bg-[#0e1015] border border-slate-200 dark:border-slate-800/90 rounded-xl overflow-hidden shadow-sm transition hover:border-slate-300 dark:hover:border-slate-700"
                             >
-                                <div className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                <div
+                                    className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                                     <div className="flex items-start sm:items-center gap-3.5 sm:gap-4">
                                         <div
                                             className="bg-sky-100/80 dark:bg-[#0c3b5e]/40 border border-sky-200 dark:border-sky-800/50 text-sky-800 dark:text-sky-300 rounded-xl p-2.5 sm:p-3 text-center min-w-[64px] sm:min-w-[72px] shrink-0">
@@ -344,12 +344,15 @@ export default function OpeningManagerPage() {
                                             <div
                                                 className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
                                                 <span className="inline-flex items-center gap-1.5">
-                                                    <Flame className="w-3.5 h-3.5 text-orange-500 dark:text-orange-400"/>
-                                                    Típus: <strong className="text-slate-800 dark:text-white">{opening.typeName}</strong>
+                                                    <Flame
+                                                        className="w-3.5 h-3.5 text-orange-500 dark:text-orange-400"/>
+                                                    Típus: <strong
+                                                    className="text-slate-800 dark:text-white">{opening.typeName}</strong>
                                                 </span>
                                                 <span className="inline-flex items-center gap-1.5">
                                                     <UserCheck className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400"/>
-                                                    Mester: <strong className="text-slate-800 dark:text-slate-200">{opening.hostedByName}</strong>
+                                                    Mester: <strong
+                                                    className="text-slate-800 dark:text-slate-200">{opening.hostedByName}</strong>
                                                 </span>
                                                 <span>
                                                     Ár:{" "}
@@ -364,17 +367,19 @@ export default function OpeningManagerPage() {
                                     <div
                                         className="flex flex-col sm:flex-row sm:items-center justify-between lg:justify-end gap-3 sm:gap-4 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-200 dark:border-slate-800">
                                         <div className="flex items-center justify-between sm:block sm:text-right">
-                                            <div className="text-xs text-slate-500 dark:text-slate-400">Összes foglalás</div>
+                                            <div className="text-xs text-slate-500 dark:text-slate-400">Összes
+                                                foglalás
+                                            </div>
                                             <div className="text-sm font-semibold whitespace-nowrap">
                                                 {bookedSeats} / {totalSeats} hely{" "}
-                                                <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+                                                <span
+                                                    className="text-xs font-normal text-slate-500 dark:text-slate-400">
                                                     ({opening.intervals.length} sáv)
                                                 </span>
                                             </div>
                                         </div>
 
                                         <div className="flex items-center gap-2 w-full sm:w-auto">
-                                            {/* TODO: szerkesztő dialógus -> updateOpeningApi */}
                                             <EditOpeningDialog
                                                 opening={opening}
                                                 disabled={!canEdit || isBusy}
@@ -394,7 +399,8 @@ export default function OpeningManagerPage() {
                                             )}
 
                                             {currentUserRole === "ADMIN" && opening.status !== "COMPLETED" && (
-                                                <DeleteOpeningDialog onConfirmDelete={() => handleDeleteOpening(opening)}/>
+                                                <DeleteOpeningDialog
+                                                    onConfirmDelete={() => handleDeleteOpening(opening)}/>
                                             )}
 
                                             <Button
@@ -455,7 +461,8 @@ export default function OpeningManagerPage() {
                                                         }`}
                                                     >
                                                         <div className="flex items-center justify-between gap-2">
-                                                            <div className="flex items-center gap-2 font-semibold text-sm">
+                                                            <div
+                                                                className="flex items-center gap-2 font-semibold text-sm">
                                                                 <Clock
                                                                     className="w-4 h-4 text-[#7c3aed] dark:text-purple-400 shrink-0"/>
                                                                 <span className="whitespace-nowrap">
@@ -487,7 +494,8 @@ export default function OpeningManagerPage() {
                                                                 <span className="flex items-center gap-1">
                                                                     <Users className="w-3.5 h-3.5"/> Foglaltság
                                                                 </span>
-                                                                <span className="text-slate-800 dark:text-slate-200 font-medium">
+                                                                <span
+                                                                    className="text-slate-800 dark:text-slate-200 font-medium">
                                                                     {booked} / {interval.participantLimit} fő
                                                                 </span>
                                                             </div>
@@ -513,7 +521,6 @@ export default function OpeningManagerPage() {
                                                             </Button>
 
                                                             <div className="flex items-center gap-1">
-                                                                {/* TODO: idősáv dialógus -> updateIntervalApi */}
                                                                 <EditIntervalDialog
                                                                     opening={opening}
                                                                     interval={interval}
@@ -536,7 +543,8 @@ export default function OpeningManagerPage() {
                                                                     )}
                                                                 </Button>
 
-                                                                <DeleteIntervalDialog onConfirmDelete={() => handleDeleteInterval(opening, interval)}/>
+                                                                <DeleteIntervalDialog
+                                                                    onConfirmDelete={() => handleDeleteInterval(opening, interval)}/>
                                                             </div>
                                                         </div>
                                                     </div>
