@@ -10,10 +10,11 @@ import {type ReactNode, useEffect} from "react";
 import {authMe} from "./auth/auth-service.ts";
 import DashboardPage from "./pages/main/pages/dashboard/DashboardPage.tsx";
 import {userStore} from "./auth/user-store.ts";
-import {CalendarRange, LayoutDashboard} from "lucide-react";
+import {CalendarRange, ClipboardClock, LayoutDashboard} from "lucide-react";
 import BookingPage from "./pages/main/pages/booking/BookingPage.tsx";
 import ProfilePage from "./pages/main/pages/profile/ProfilePage.tsx";
 import {logout} from "./pages/main/main-service.ts";
+import OpeningPage from "./pages/main/pages/opening/OpeningPage.tsx";
 
 export interface NavItem {
     path: string;
@@ -37,6 +38,13 @@ export const navItems: NavItem[] = [
         element: <BookingPage/>,
         roles: ["USER", "ADMIN", "TRAINEE", "SAUNA_MATER"],
         icon: <CalendarRange />
+    },
+    {
+        path:"admin/opening",
+        label: "Nyitáskezelő",
+        element: <OpeningPage/>,
+        roles: ["TRAINEE","SAUNE_MATER","ADMIN"],
+        icon: <ClipboardClock />
     }
 ];
 

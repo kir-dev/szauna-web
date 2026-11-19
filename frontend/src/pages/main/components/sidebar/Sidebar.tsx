@@ -110,7 +110,7 @@ export default function Sidebar({isMobileOpen, setIsMobileOpen}) {
           ${!isPinned && isExpanded ? 'md:shadow-2xl dark:md:shadow-black/80 md:shadow-gray-300/80 border-r border-gray-200 dark:border-gray-800 ' : ''}
         `}
             >
-                <div className="p-3 flex flex-col gap-4">
+                <div className="p-3 flex flex-col mb-2 gap-4">
 
                     <div className="flex items-center justify-between">
                         <div className="relative group h-10">
@@ -126,11 +126,15 @@ export default function Sidebar({isMobileOpen, setIsMobileOpen}) {
 
                         <div
                             className={`flex items-center gap-2 pr-2 transition-opacity duration-200 ${isExpanded ? 'opacity-100' : 'opacity-0 hidden'}`}>
-                            <img
-                                src={logoImg}
-                                alt="SCHSzauna"
-                                className="h-10 object-contain hover:scale-105 transition-transform"
-                            /></div>
+                            <Link to={"/"}>
+
+                                <img
+                                    src={logoImg}
+                                    alt="SCHSzauna"
+                                    className="h-10 object-contain hover:scale-105 transition-transform"
+                                />
+                            </Link>
+                        </div>
                     </div>
 
                 </div>
