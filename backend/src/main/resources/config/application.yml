@@ -31,6 +31,6 @@ szaunaWeb:
   activeMembershipsScope: pek.sch.bme.hu:activeMemberships/v1
   jwt:
     secret: YOUR_SECRET_STRING
-    experation: 3600000 #1 hour expiration
+    expiration: 3600000 #1 hour expiration
     issuer: Kir-Dev
     authTokenCookieName: auth_token

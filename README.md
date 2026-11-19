@@ -11,7 +11,7 @@ The booking management system for Szauna Kör.
 ## Prerequisites
 
 - **JDK 25**
-- **Node.js** and **npm** (tested with Node.js *v24.18.0* and npm *x.y.z*)
+- **Node.js** and **npm** (tested with Node.js *v24.18.0* and npm *12.2.0*)
 - **Git**
 - AuthSCH OAuth Client ([auth.sch.bme.hu console](https://auth.sch.bme.hu/console))
 
@@ -85,12 +85,12 @@ szaunaWeb:
   activeMembershipsScope: pek.sch.bme.hu:activeMemberships/v1
   jwt:
     secret: "YOUR_JWT_SECRET"
-    experation: 3600000 #1 hour expiration
+    expiration: 3600000 #1 hour expiration
     issuer: Kir-Dev
     authTokenCookieName: auth_token
 ```
 > [!CAUTION]
-> This file contains secrets. It is listed in `.gitignore`, never commit it.
+> This file contains secrets. It is listed in `.gitignore`, never commit it. 
 
 ### 5. Run the backend
 
@@ -110,6 +110,8 @@ cd backend
 In IntelliJ IDEA you can set the same in *Run Configuration → Active profiles*: `local,test`.
 
 ### 6. Install frontend dependencies
+
+Open a **new terminal** (the backend keeps running in the first one), then from the repository root:
 
 ```bash
 cd frontend

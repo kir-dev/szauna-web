@@ -16,7 +16,7 @@ class JwtService(
     @Value("\${szaunaWeb.jwt.secret}")
     private val secret: String,
 
-    @Value("\${szaunaWeb.jwt.experation}")
+    @Value("\${szaunaWeb.jwt.expiration}")
     private val expiration: Long,
 
     @Value("\${szaunaWeb.jwt.issuer}")
